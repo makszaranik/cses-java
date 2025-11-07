@@ -1,18 +1,18 @@
 services:
   mongo:
     image: mongo
-    restart: always
     ports:
       - 27017:27017
+    restart: always
     command: ["mongod", "--replSet", "rs0"]
     volumes:
       - mongo-data:/data/db
 
   mongo-express:
     image: mongo-express
-    restart: always
     ports:
       - 8081:8081
+    restart: always
     environment:
       ME_CONFIG_MONGODB_URL: mongodb://mongo:27017/?replicaSet=rs0
       ME_CONFIG_BASICAUTH_ENABLED: true
@@ -22,6 +22,8 @@ services:
   core:
     image: core
     restart: always
+    ports:
+      - 8080:8080
     depends_on:
       gateway:
         condition: service_started
@@ -29,8 +31,6 @@ services:
         condition: service_started
       rabbit:
         condition: service_healthy
-    ports:
-      - 8080:8080
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/demo?replicaSet=rs0
       SPRING_RABBITMQ_HOST: rabbit
@@ -44,7 +44,7 @@ services:
     image: gateway
     restart: always
     ports:
-      - 8081:8081
+      - 8000:8000
 
   rabbit:
     image: rabbitmq:3-management

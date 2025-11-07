@@ -17,7 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -40,9 +39,7 @@ public class TaskController {
 
 
     @GetMapping("status")
-    @PreAuthorize(roles = {UserRole.ADMIN, UserRole.STUDENT, UserRole.TEACHER})
-    public SseEmitter taskStatus(@RequestBody @Valid TaskSubmissionStatusRequestDto requestDto) throws IOException {
-        String submissionId = requestDto.submissionId();
+    public SseEmitter taskStatus(@RequestParam String submissionId) {
         String userId = userContext.get().getId();
         SseEmitter emitter = new SseEmitter(TimeUnit.SECONDS.toMillis(30));
         eventService.createSubmissionStatusEvent(emitter, userId, submissionId);
@@ -53,7 +50,7 @@ public class TaskController {
     @PostMapping("create")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize(roles = {UserRole.ADMIN, UserRole.TEACHER})
-    public String createTask(@RequestBody @Valid TaskRequestDto createDto) {
+    public String createTask(@RequestBody @Valid TaskCreateRequestDto createDto) {
         String ownerId = userContext.get().getId();
         TaskEntity task = taskMapper.toEntity(createDto, ownerId);
         return taskService.save(task);
@@ -69,7 +66,7 @@ public class TaskController {
 
     @PutMapping("update")
     @PreAuthorize(roles = {UserRole.ADMIN, UserRole.TEACHER})
-    public void updateTask(@RequestBody @Valid TaskRequestDto updateDto) {
+    public void updateTask(@RequestBody @Valid TaskUpdateRequestDto updateDto) {
         String ownerId = userContext.get().getId();
         taskService.updateTask(taskMapper.toEntity(updateDto, ownerId));
     }

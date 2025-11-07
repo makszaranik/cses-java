@@ -3,6 +3,8 @@ package com.example.demo.controller;
 
 import com.example.demo.model.file.FileEntity;
 import com.example.demo.model.file.FileEntity.FileType;
+import com.example.demo.model.user.UserEntity.UserRole;
+import com.example.demo.security.PreAuthorize;
 import com.example.demo.security.UserContext;
 import com.example.demo.service.file.FileUtilService;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class FileController {
 
     @PostMapping("upload")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize(roles = {UserRole.STUDENT, UserRole.ADMIN, UserRole.TEACHER})
     public FileEntity uploadFile(@RequestParam("file") MultipartFile file,
                                  @RequestParam FileType fileType) {
         String ownerId = context.get().getId();

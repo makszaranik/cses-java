@@ -2,9 +2,6 @@ spring:
   data:
     mongodb:
       uri: mongodb://localhost:27017/demo?replicaSet=rs0&directConnection=true
-  task:
-    scheduling:
-      pool:
-        size: 10
+
 jwt:
   expiration: 300000

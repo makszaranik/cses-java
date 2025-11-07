@@ -5,11 +5,10 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public record TaskRequestDto(
-        @NotNull String taskId
+public record TaskUpdateRequestDto(
+        @NotNull String taskId,
         @NotNull @NotBlank String title,
         @NotNull @NotBlank String statement,
-        @NotNull int timeRestriction,
         @Min(0) int memoryRestriction,
         @NotNull String solutionTemplateFileId,
         @NotNull String testsFileId,
