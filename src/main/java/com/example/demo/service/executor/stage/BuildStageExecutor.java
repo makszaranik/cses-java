@@ -1,8 +1,10 @@
 package com.example.demo.service.executor.stage;
 
 import com.example.demo.model.submission.SubmissionEntity;
+import com.example.demo.service.executor.facade.DockerClientFacade;
 import com.example.demo.service.submission.SubmissionService;
 import com.github.dockerjava.api.DockerClient;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
@@ -13,16 +15,11 @@ import java.util.List;
 
 @Slf4j
 @Component("build")
-public class BuildStageExecutor extends DockerJobRunner implements StageExecutor {
+@RequiredArgsConstructor
+public class BuildStageExecutor implements StageExecutor {
 
+    private final DockerClientFacade dockerClientFacade;
     private final SubmissionService submissionService;
-
-    @Autowired
-    public BuildStageExecutor(DockerClient dockerClient, SubmissionService submissionService) {
-        super(dockerClient);
-        this.submissionService = submissionService;
-    }
-
 
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
@@ -34,14 +31,13 @@ public class BuildStageExecutor extends DockerJobRunner implements StageExecutor
         String cmd = String.format(
                 "wget -O solution.zip %s && unzip solution.zip -d solution_dir" +
                         " && SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1)" +
-                        " && cd SOLUTION_DIR_NAME/*" +
+                        " && cd $SOLUTION_DIR_NAME" +
                         " && mvn clean compile -q",
                 solutionUri
         );
 
-        JobResult jobResult = runJob(
+        DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJob(
                 "build_container",
-                submission,
                 "/bin/bash", "-c", cmd
         );
 

@@ -2,32 +2,23 @@ package com.example.demo.service.executor.stage;
 
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
+import com.example.demo.service.executor.facade.DockerClientFacade;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
-import com.github.dockerjava.api.DockerClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 
 @Slf4j
 @Component("test")
-public class TestStageExecutor extends DockerJobRunner implements StageExecutor {
+@RequiredArgsConstructor
+public class TestStageExecutor implements StageExecutor {
 
     private final TaskService taskService;
+    private final DockerClientFacade dockerClientFacade;
     private final SubmissionService submissionService;
 
-
-    @Autowired
-    public TestStageExecutor(DockerClient dockerClient,
-                             SubmissionService submissionService,
-                             TaskService taskService
-    ) {
-        super(dockerClient);
-        this.taskService = taskService;
-        this.submissionService = submissionService;
-    }
 
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
@@ -49,9 +40,8 @@ public class TestStageExecutor extends DockerJobRunner implements StageExecutor 
                 solutionUri, testUri
         );
 
-        JobResult jobResult = runJob(
+        DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJob(
                 "test_job",
-                submission,
                 "/bin/bash", "-c", cmd
         );
 

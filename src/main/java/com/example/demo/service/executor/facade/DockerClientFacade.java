@@ -23,8 +23,10 @@ public class DockerClientFacade {
         String containerId = null;
         try {
             containerId = createAndStartContainer(containerName, args);
+            log.debug("container with id {} running.", containerId);
             int status = getStatusCode(containerId);
             String logs = collectLogs(containerId);
+            log.debug("container with id {} finished with status code {}.", containerId, status);
             return new DockerJobResult(status, logs);
 
         } catch (Exception e) {
@@ -54,8 +56,8 @@ public class DockerClientFacade {
         return container.getId();
     }
 
-    public void removeContainer(String id) {
-        dockerClient.removeContainerCmd(id)
+    public void removeContainer(String containerId) {
+        dockerClient.removeContainerCmd(containerId)
                 .withRemoveVolumes(true)
                 .withForce(true)
                 .exec();
@@ -66,17 +68,20 @@ public class DockerClientFacade {
         dockerClient.logContainerCmd(containerId)
                 .withStdOut(true)
                 .withStdErr(true)
+                .withFollowStream(false)
                 .exec(new ResultCallback.Adapter<Frame>() {
                     @Override
                     public void onNext(Frame frame) {
-                        logs.append(new String(frame.getPayload(), StandardCharsets.UTF_8));
+                        String line = new String(frame.getPayload(), StandardCharsets.UTF_8).trim();
+                        logs.append(line).append(System.lineSeparator());
                     }
                 })
-                .awaitCompletion(60, TimeUnit.SECONDS);
+                .awaitCompletion(60, TimeUnit.SECONDS); //await logs for 60 sec
+
         return logs.toString();
     }
 
-    public record DockerJobResult(Integer status, String logs) {}
+    public record DockerJobResult(Integer statusCode, String logs) {}
 
 
 }
