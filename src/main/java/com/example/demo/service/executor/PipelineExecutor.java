@@ -6,7 +6,6 @@ import com.example.demo.service.executor.stage.StageExecutorChain;
 import com.example.demo.service.submission.SubmissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service

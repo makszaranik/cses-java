@@ -2,6 +2,9 @@ spring:
   data:
     mongodb:
       uri: mongodb://localhost:27017/demo?replicaSet=rs0&directConnection=true
+logging:
+  level:
+    com.example.demo: DEBUG
 
 jwt:
   expiration: 300000

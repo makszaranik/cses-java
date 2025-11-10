@@ -38,12 +38,10 @@ public class AuthenticationFilter extends OncePerRequestFilter {
                     .role(UserEntity.UserRole.GUEST)
                     .build())
             );
-            log.info("filter chain ");
             filterChain.doFilter(request, response);
         } catch (InvalidTokenException e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         } finally {
-            log.info("context remove");
             userContext.remove();
         }
     }
