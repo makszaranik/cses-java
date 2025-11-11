@@ -40,7 +40,7 @@ public class TestStageExecutor implements StageExecutor {
         String testUri = String.format(downloadPath, testsFileId);
 
         String hostReportsDir = "/tmp/test-results/" + submission.getId();
-        String containerReportsDir = "/app/solution_dir/solution/target/surefire-reports";
+        String containerReportsDir = "/app/solution_dir";
 
         String cmd = String.format(
                 "wget -O solution.zip %s && unzip solution.zip -d solution_dir " +

@@ -14,7 +14,12 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Component("linter")
@@ -37,7 +42,7 @@ public class LinterStageExecutor implements StageExecutor{
         String linterUri = String.format(downloadPath, lintersFileId);
 
         String hostReportsDir = "/tmp/linter-results/" + submission.getId();
-        String containerReportsDir = "/app/solution_dir/solution/target";
+        String containerReportsDir = "/app/solution_dir";
 
         String cmd = String.format(
                 "wget -O solution.zip %s && unzip solution.zip -d solution_dir " +
@@ -84,12 +89,22 @@ public class LinterStageExecutor implements StageExecutor{
 
     @SneakyThrows
     public boolean isPmdPassed(String pathToDir) {
-        File file = new File(pathToDir, "pmd.xml");
-        if (!file.exists()) {
-            throw new IOException("PMD report not found: " + file.getAbsolutePath());
-        }
-        String content = Files.readString(file.toPath());
-        return !content.contains("<violation");
+        String[] content = {""};
+
+        Files.walkFileTree(Path.of(pathToDir), new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if(file.getFileName().toString().equals("pmd.xml")){
+                    content[0] = Files.readString(file);
+                    return FileVisitResult.TERMINATE;
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        return !content[0].contains("<violation");
     }
+
+
+
 
 }
