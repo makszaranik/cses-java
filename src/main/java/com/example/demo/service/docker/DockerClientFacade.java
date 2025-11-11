@@ -1,6 +1,5 @@
-package com.example.demo.service.executor.facade;
+package com.example.demo.service.executor;
 
-import com.example.demo.model.submission.SubmissionEntity;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.WaitContainerResultCallback;
