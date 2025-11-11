@@ -1,17 +1,11 @@
 package com.example.demo.service.executor.stage;
 
 import com.example.demo.model.submission.SubmissionEntity;
-import com.example.demo.service.executor.facade.DockerClientFacade;
+import com.example.demo.service.docker.DockerClientFacade;
 import com.example.demo.service.submission.SubmissionService;
-import com.github.dockerjava.api.DockerClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
 import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Slf4j
 @Component("build")

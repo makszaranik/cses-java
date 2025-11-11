@@ -1,14 +1,17 @@
-package com.example.demo.service.executor;
+package com.example.demo.service.docker;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.WaitContainerResultCallback;
+import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.HostConfig;
+import com.github.dockerjava.api.model.Volume;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
@@ -30,6 +33,38 @@ public class DockerClientFacade {
 
         } catch (Exception e) {
             log.error("Error running container: {}", e.getMessage(), e);
+            return new DockerJobResult(-1, e.getMessage());
+
+        } finally {
+            if (containerId != null) removeContainer(containerId);
+        }
+    }
+
+    public DockerJobResult runJobWithVolume(String containerName, String hostDir, String containerDir, String... args) {
+        String containerId = null;
+        boolean mkdir = new File(hostDir).mkdirs();
+        try {
+            var container = dockerClient.createContainerCmd("java-maven-ci")
+                    .withCmd(args)
+                    .withHostConfig(HostConfig.newHostConfig()
+                            .withNetworkMode("demo_default")
+                            .withBinds(new Bind(hostDir, new Volume(containerDir))))
+                    .withTty(true)
+                    .withName(containerName)
+                    .exec();
+
+            containerId = container.getId();
+            dockerClient.startContainerCmd(containerId).exec();
+            log.debug("container with id {} running with volume.", containerId);
+
+            int status = getStatusCode(containerId);
+            String logs = collectLogs(containerId);
+            log.debug("container with id {} finished with status code {}.", containerId, status);
+
+            return new DockerJobResult(status, logs);
+
+        } catch (Exception e) {
+            log.error("Error running container with volume: {}", e.getMessage(), e);
             return new DockerJobResult(-1, e.getMessage());
 
         } finally {

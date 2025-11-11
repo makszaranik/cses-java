@@ -27,6 +27,7 @@ public class SubmissionEntity implements Serializable {
     private String sourceCodeFileId; //user uploaded sourceCodeId
     private String logs;
     private Status status;
+    private Integer score;
 
     @CreatedDate
     private LocalDateTime createdAt;
