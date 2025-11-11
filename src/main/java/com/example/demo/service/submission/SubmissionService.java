@@ -26,6 +26,7 @@ public class SubmissionService {
                 .sourceCodeFileId(submitDto.sourceCodeFileId())
                 .status(SubmissionEntity.Status.SUBMITTED)
                 .logs("")
+                .score(null)
                 .build();
 
         SubmissionEntity saved = submissionRepository.save(taskSubmission);

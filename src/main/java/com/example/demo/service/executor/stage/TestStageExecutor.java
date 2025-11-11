@@ -8,6 +8,7 @@ import com.example.demo.service.task.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -45,7 +46,6 @@ public class TestStageExecutor implements StageExecutor {
                 "wget -O solution.zip %s && unzip solution.zip -d solution_dir " +
                         "&& wget -O test.zip %s && unzip test.zip -d test_dir " +
                         "&& SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) " +
-                        "&& mkdir -p $SOLUTION_DIR_NAME/src/test/java " +
                         "&& mv test_dir/test/java/* $SOLUTION_DIR_NAME/src/test/java " +
                         "&& cd $SOLUTION_DIR_NAME && mvn test -q",
                 solutionUri, testUri
@@ -62,7 +62,7 @@ public class TestStageExecutor implements StageExecutor {
         Integer statusCode = jobResult.statusCode();
         String logs = jobResult.logs();
         TestsResult passedTests = getPassedTests(hostReportsDir);
-        Integer score = passedTests.total == 0 ? 0 : (passedTests.passed * 100) / passedTests.total;
+        Integer score = passedTests.total == 0 ? 0 : (passedTests.passed / passedTests.total) * task.getTestsPoints();
 
         submission.setLogs(logs);
         submission.setScore(score);

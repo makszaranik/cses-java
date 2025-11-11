@@ -44,5 +44,7 @@ public class SubmissionEntity implements Serializable {
         ACCEPTED,
         LINTER_TESTING,
         TIME_LIMIT_EXCEEDED,
+        LINTER_PASSED,
+        LINTER_FAILED,
     }
 }
