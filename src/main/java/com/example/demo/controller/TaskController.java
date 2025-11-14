@@ -4,16 +4,15 @@ package com.example.demo.controller;
 import com.example.demo.dto.task.*;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
-import com.example.demo.model.user.UserEntity.UserRole;
-import com.example.demo.security.PreAuthorize;
-import com.example.demo.security.UserContext;
 import com.example.demo.service.event.EventService;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskMapper;
 import com.example.demo.service.task.TaskService;
+import com.example.demo.service.user.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -27,21 +26,22 @@ public class TaskController {
 
     private final TaskService taskService;
     private final TaskMapper taskMapper;
-    private final UserContext userContext;
     private final SubmissionService submissionService;
     private final EventService eventService;
+    private final UserService userService;
 
     @PostMapping("submit")
-    //@PreAuthorize(roles = {UserRole.ADMIN, UserRole.STUDENT, UserRole.TEACHER})
+    @PreAuthorize("isAuthenticated()")
     public SubmissionEntity submitTask(@RequestBody @Valid TaskSubmissionRequestDto submitDto) {
         return submissionService.createSubmission(submitDto);
     }
 
 
     @GetMapping("status")
+    @PreAuthorize("isAuthenticated()")
     public SseEmitter taskStatus(@RequestParam String submissionId) {
-        String userId = userContext.get().getId();
-        SseEmitter emitter = new SseEmitter(TimeUnit.SECONDS.toMillis(30));
+        String userId = userService.getCurrentUser().getId();
+        SseEmitter emitter = new SseEmitter(TimeUnit.SECONDS.toMillis(60));
         eventService.createSubmissionStatusEvent(emitter, userId, submissionId);
         return emitter;
     }
@@ -49,25 +49,25 @@ public class TaskController {
 
     @PostMapping("create")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize(roles = {UserRole.ADMIN, UserRole.TEACHER})
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
     public String createTask(@RequestBody @Valid TaskCreateRequestDto createDto) {
-        String ownerId = userContext.get().getId();
+        String ownerId = userService.getCurrentUser().getId();
         TaskEntity task = taskMapper.toEntity(createDto, ownerId);
         return taskService.save(task);
     }
 
 
     @DeleteMapping("delete")
-    @PreAuthorize(roles = {UserRole.ADMIN, UserRole.TEACHER})
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
     public void deleteTask(@RequestBody @Valid TaskDeletionRequestDto deleteDto) {
         taskService.removeTaskEntity(deleteDto.taskId());
     }
 
 
     @PutMapping("update")
-    @PreAuthorize(roles = {UserRole.ADMIN, UserRole.TEACHER})
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
     public void updateTask(@RequestBody @Valid TaskUpdateRequestDto updateDto) {
-        String ownerId = userContext.get().getId();
+        String ownerId = userService.getCurrentUser().getId();
         taskService.updateTask(taskMapper.toEntity(updateDto, ownerId));
     }
 

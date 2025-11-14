@@ -8,18 +8,14 @@ import com.example.demo.service.task.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Component("linter")
@@ -48,7 +44,7 @@ public class LinterStageExecutor implements StageExecutor{
                 "wget -O solution.zip %s && unzip solution.zip -d solution_dir " +
                         "&& wget -O linter.zip %s && unzip linter.zip -d linter_dir " +
                         "&& SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) " +
-                        "&& mv linter_dir/* $SOLUTION_DIR_NAME/src/main/resources/pmd " +
+                        "&& mv linter_dir/* $SOLUTION_DIR_NAME/src/main/resources " +
                         "&& cd $SOLUTION_DIR_NAME && mvn pmd:check -q",
                 solutionUri, linterUri
         );

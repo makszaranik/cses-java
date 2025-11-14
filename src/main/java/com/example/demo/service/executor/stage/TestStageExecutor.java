@@ -47,7 +47,7 @@ public class TestStageExecutor implements StageExecutor {
                         "&& wget -O test.zip %s && unzip test.zip -d test_dir " +
                         "&& SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) " +
                         "&& mv test_dir/test/java/* $SOLUTION_DIR_NAME/src/test/java " +
-                        "&& cd $SOLUTION_DIR_NAME && mvn test -q",
+                        "&& cd $SOLUTION_DIR_NAME && mvn clean test -q",
                 solutionUri, testUri
         );
 
