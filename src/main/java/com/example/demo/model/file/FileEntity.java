@@ -36,6 +36,7 @@ public abstract class FileEntity {
     public enum FileType {
         LINTER,
         SOLUTION,
+        SOLUTION_TEMPLATE,
         TEST
     }
 }

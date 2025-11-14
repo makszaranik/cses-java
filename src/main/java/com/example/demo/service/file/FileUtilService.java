@@ -1,11 +1,8 @@
 package com.example.demo.service.file;
 
 import com.example.demo.exceptions.ResourceNotFoundException;
-import com.example.demo.model.file.FileEntity;
+import com.example.demo.model.file.*;
 import com.example.demo.model.file.FileEntity.FileType;
-import com.example.demo.model.file.LinterFileEntity;
-import com.example.demo.model.file.SolutionFileEntity;
-import com.example.demo.model.file.TestsFileEntity;
 import com.example.demo.repository.FileRepository;
 import com.mongodb.client.gridfs.model.GridFSFile;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +39,11 @@ public class FileUtilService {
                     .build();
 
             case LINTER -> LinterFileEntity.builder()
+                    .ownerId(ownerId)
+                    .gridFSFileId(gridFsFileId)
+                    .build();
+
+            case SOLUTION_TEMPLATE -> SolutionTemplateFileEntity.builder()
                     .ownerId(ownerId)
                     .gridFSFileId(gridFsFileId)
                     .build();

@@ -5,11 +5,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
-@SpringBootApplication
 @EnableScheduling
-@EnableAspectJAutoProxy
-@EnableConfigurationProperties
+@EnableMethodSecurity
+@SpringBootApplication
 public class DemoApplication {
 
 	public static void main(String[] args) {

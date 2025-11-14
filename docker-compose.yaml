@@ -29,8 +29,6 @@ services:
         condition: service_started
       mongo:
         condition: service_started
-      rabbit:
-        condition: service_healthy
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/demo?replicaSet=rs0
       SPRING_RABBITMQ_HOST: rabbit
@@ -46,20 +44,6 @@ services:
     ports:
       - 8000:8000
 
-  rabbit:
-    image: rabbitmq:3-management
-    restart: always
-    ports:
-      - 5672:5672
-      - 15672:15672
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    healthcheck:
-      test: [ "CMD", "rabbitmqctl", "status" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
 volumes:
   mongo-data:

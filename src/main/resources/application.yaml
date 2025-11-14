@@ -2,6 +2,16 @@ spring:
   data:
     mongodb:
       uri: mongodb://localhost:27017/demo?replicaSet=rs0&directConnection=true
-
-jwt:
-  expiration: 300000
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: Ov23lis8j5aud7s4QZJW
+            client-secret: f79ead43c7116914f688dba333e8eb303437f06c
+            scope: read:user, user:email
+        provider:
+          github:
+            authorization-uri: https://github.com/login/oauth/authorize
+            token-uri: https://github.com/login/oauth/access_token
+            user-info-uri: https://api.github.com/user
