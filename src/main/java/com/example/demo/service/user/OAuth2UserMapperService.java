@@ -43,8 +43,7 @@ public class OAuth2UserMapperService implements OAuth2UserService<OAuth2UserRequ
             return userRepository.save(userEntity);
         });
 
-        log.info("user={}", user);
-
+        log.debug("user={}", user);
         return new CustomOAuth2User(user, oAuth2User);
     }
 

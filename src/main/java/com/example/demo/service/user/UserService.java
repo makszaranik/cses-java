@@ -4,7 +4,7 @@ import com.example.demo.model.user.UserEntity;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -26,12 +26,18 @@ public class UserService {
     }
 
     public UserEntity getCurrentUser() {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof CustomOAuth2User) {
-            return ((CustomOAuth2User) auth.getPrincipal()).getUserEntity();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof CustomOAuth2User) {
+            return ((CustomOAuth2User) authentication.getPrincipal()).getUserEntity();
         }
-        log.info("Current user is {}", SecurityContextHolder.getContext().getAuthentication());
         return null;
+    }
+
+    public void grantRole(String userId, UserEntity.UserRole role) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setRole(role);
+        userRepository.save(user);
     }
 
 }

@@ -27,11 +27,13 @@ public class SubmissionService {
                 .logs("")
                 .score(null)
                 .build();
-
-        //rabbitTemplate.convertAndSend("",  RabbitConfig.SUBMISSION_QUEUE, saved.getId());
         return submissionRepository.save(taskSubmission);
     }
 
+    public Integer getNumberOfUserSubmissionsForTask(String taskId) {
+        String userId = userService.getCurrentUser().getId();
+        return submissionRepository.countByUserIdAndTaskId(userId, taskId);
+    }
 
     public List<SubmissionEntity> getAllSubmitted() {
         return submissionRepository.findAllByStatus(SubmissionEntity.Status.SUBMITTED);

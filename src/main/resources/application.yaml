@@ -9,7 +9,7 @@ spring:
           github:
             client-id: Ov23lis8j5aud7s4QZJW
             client-secret: f79ead43c7116914f688dba333e8eb303437f06c
-            scope: read:user, user:email
+            scope: read:user, user:email, repo
         provider:
           github:
             authorization-uri: https://github.com/login/oauth/authorize
