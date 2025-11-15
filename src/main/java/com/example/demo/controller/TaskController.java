@@ -11,6 +11,7 @@ import com.example.demo.service.task.TaskService;
 import com.example.demo.service.user.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @RestController
 @RequestMapping("tasks")
 @RequiredArgsConstructor
@@ -31,7 +33,7 @@ public class TaskController {
     private final UserService userService;
 
     @PostMapping("submit")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER')")
     public SubmissionEntity submitTask(@RequestBody @Valid TaskSubmissionRequestDto submitDto) {
         return submissionService.createSubmission(submitDto);
     }

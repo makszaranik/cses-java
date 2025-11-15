@@ -31,7 +31,6 @@ public class FileController {
 
 
     @GetMapping("download/{fileId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Resource> downloadFile(@PathVariable("fileId") String fileId) {
         GridFsResource resourceFile = fileUtilService.getFileById(fileId);
         String contentType = resourceFile.getContentType();

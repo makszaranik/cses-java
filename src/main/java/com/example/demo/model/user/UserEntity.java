@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @Document("users")
@@ -17,12 +19,10 @@ public class UserEntity {
     @Id
     private String id;
     private String username;
-    private String password;
     private String email;
     private UserRole role;
 
     public enum UserRole {
-        GUEST,
         STUDENT,
         TEACHER,
         ADMIN
