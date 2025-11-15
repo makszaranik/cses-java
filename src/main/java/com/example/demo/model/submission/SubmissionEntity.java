@@ -37,13 +37,10 @@ public class SubmissionEntity implements Serializable {
 
     public enum Status {
         SUBMITTED,
-        COMPILING,
         COMPILATION_SUCCESS,
         COMPILATION_ERROR,
         WRONG_ANSWER,
         ACCEPTED,
-        LINTER_TESTING,
-        TIME_LIMIT_EXCEEDED,
         LINTER_PASSED,
         LINTER_FAILED,
     }

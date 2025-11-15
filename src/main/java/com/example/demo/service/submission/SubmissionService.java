@@ -5,6 +5,7 @@ import com.example.demo.dto.task.TaskSubmissionRequestDto;
 import com.example.demo.exceptions.SubmissionNotFoundException;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.repository.SubmissionRepository;
+import com.example.demo.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,21 +16,24 @@ import java.util.List;
 public class SubmissionService {
 
     private final SubmissionRepository submissionRepository;
+    private final UserService userService;
 
     public SubmissionEntity createSubmission(TaskSubmissionRequestDto submitDto) {
         SubmissionEntity taskSubmission = SubmissionEntity.builder()
                 .taskId(submitDto.taskId())
-                .userId("userId")
+                .userId(userService.getCurrentUser().getId())
                 .sourceCodeFileId(submitDto.sourceCodeFileId())
                 .status(SubmissionEntity.Status.SUBMITTED)
                 .logs("")
                 .score(null)
                 .build();
-
-        //rabbitTemplate.convertAndSend("",  RabbitConfig.SUBMISSION_QUEUE, saved.getId());
         return submissionRepository.save(taskSubmission);
     }
 
+    public Integer getNumberOfUserSubmissionsForTask(String taskId) {
+        String userId = userService.getCurrentUser().getId();
+        return submissionRepository.countByUserIdAndTaskId(userId, taskId);
+    }
 
     public List<SubmissionEntity> getAllSubmitted() {
         return submissionRepository.findAllByStatus(SubmissionEntity.Status.SUBMITTED);

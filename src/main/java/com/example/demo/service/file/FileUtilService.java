@@ -14,6 +14,8 @@ import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
+
 @Service
 @RequiredArgsConstructor
 public class FileUtilService {
@@ -22,9 +24,13 @@ public class FileUtilService {
     private final FileRepository fileRepository;
 
     @SneakyThrows
-    public FileEntity uploadFile(MultipartFile file, FileType fileType, String ownerId) {
+    public FileEntity uploadFile(InputStream inputStream,
+                                 String originalFilename,
+                                 String contentType,
+                                 FileType fileType,
+                                 String ownerId) {
         String gridFsFileId = gridFsTemplate
-                .store(file.getInputStream(), file.getOriginalFilename(), file.getContentType())
+                .store(inputStream, originalFilename, contentType)
                 .toString();
 
         FileEntity fileEntity = switch (fileType) {

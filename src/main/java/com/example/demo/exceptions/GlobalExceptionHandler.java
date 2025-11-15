@@ -16,15 +16,4 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
-
-    @ExceptionHandler(InvalidTokenException.class)
-    public ProblemDetail handleInvalidTokenException(InvalidTokenException e) {
-        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
-        problemDetail.setTitle("Invalid token");
-        problemDetail.setDetail(e.getMessage());
-        return problemDetail;
-    }
-
-
-
 }

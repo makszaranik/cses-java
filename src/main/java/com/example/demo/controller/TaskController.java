@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
-
 import com.example.demo.dto.task.*;
+import com.example.demo.exceptions.SubmissionNotAllowedException;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.event.EventService;
@@ -11,7 +11,9 @@ import com.example.demo.service.task.TaskService;
 import com.example.demo.service.user.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -19,6 +21,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @RestController
 @RequestMapping("tasks")
 @RequiredArgsConstructor
@@ -33,8 +36,16 @@ public class TaskController {
     @PostMapping("submit")
     @PreAuthorize("isAuthenticated()")
     public SubmissionEntity submitTask(@RequestBody @Valid TaskSubmissionRequestDto submitDto) {
+        TaskEntity task = taskService.findTaskById(submitDto.taskId());
+        Integer submissionCount = submissionService.getNumberOfUserSubmissionsForTask(submitDto.taskId());
+
+        if (submissionCount >= task.getSubmissionsNumberLimit()) {
+            throw new SubmissionNotAllowedException("Number of submissions exceeded");
+        }
+
         return submissionService.createSubmission(submitDto);
     }
+
 
 
     @GetMapping("status")
@@ -60,6 +71,13 @@ public class TaskController {
     @DeleteMapping("delete")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
     public void deleteTask(@RequestBody @Valid TaskDeletionRequestDto deleteDto) {
+        TaskEntity task = taskService.findTaskById(deleteDto.taskId());
+        String ownerId = userService.getCurrentUser().getId();
+
+        if (!ownerId.equals(task.getOwnerId())) {
+            throw new AccessDeniedException("You are not allowed to delete this task");
+        }
+
         taskService.removeTaskEntity(deleteDto.taskId());
     }
 
@@ -67,7 +85,13 @@ public class TaskController {
     @PutMapping("update")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
     public void updateTask(@RequestBody @Valid TaskUpdateRequestDto updateDto) {
+        TaskEntity task = taskService.findTaskById(updateDto.taskId());
         String ownerId = userService.getCurrentUser().getId();
+
+        if (!ownerId.equals(task.getOwnerId())) {
+            throw new AccessDeniedException("You are not allowed to update this task");
+        }
+
         taskService.updateTask(taskMapper.toEntity(updateDto, ownerId));
     }
 
