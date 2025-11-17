@@ -18,14 +18,14 @@ public class UserController {
     private final UserService userService;
     private final GithubService githubService;
 
-    @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("{userId}/grant-teacher")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public void grantTeacherRole(@PathVariable String userId) {
         userService.grantRole(userId, UserEntity.UserRole.TEACHER);
     }
 
-    @PreAuthorize("isAuthenticated()")
     @GetMapping("repos")
+    @PreAuthorize("isAuthenticated()")
     public List<GithubService.RepoData> getAllGithubRepoIds(){
         return githubService.getAllUserReposNames();
     }

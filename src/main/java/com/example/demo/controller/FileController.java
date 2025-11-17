@@ -55,8 +55,9 @@ public class FileController {
         return ResponseEntity.ok().headers(headers).body(resourceFile);
     }
 
-    @PreAuthorize("isAuthenticated()")
+
     @GetMapping("github-save-zip/{repoName}")
+    @PreAuthorize("isAuthenticated()")
     public FileEntity downloadGithubRepo(@PathVariable String repoName) {
         log.debug("repoName: {}", repoName);
         return githubService.downloadAndSaveRepoToZip(repoName);
