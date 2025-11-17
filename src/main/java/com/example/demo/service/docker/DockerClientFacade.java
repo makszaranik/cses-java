@@ -2,6 +2,7 @@ package com.example.demo.service.docker;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
+import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.WaitContainerResultCallback;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Frame;
@@ -44,7 +45,7 @@ public class DockerClientFacade {
         String containerId = null;
         boolean mkdir = new File(hostDir).mkdirs();
         try {
-            var container = dockerClient.createContainerCmd("java-maven-ci")
+            CreateContainerResponse container = dockerClient.createContainerCmd("java-maven-ci")
                     .withCmd(args)
                     .withHostConfig(HostConfig.newHostConfig()
                             .withNetworkMode("demo_default")

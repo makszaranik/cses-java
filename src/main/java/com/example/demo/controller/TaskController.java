@@ -46,8 +46,6 @@ public class TaskController {
         return submissionService.createSubmission(submitDto);
     }
 
-
-
     @GetMapping("status")
     @PreAuthorize("isAuthenticated()")
     public SseEmitter taskStatus(@RequestParam String submissionId) {
@@ -57,7 +55,6 @@ public class TaskController {
         return emitter;
     }
 
-
     @PostMapping("create")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
@@ -66,7 +63,6 @@ public class TaskController {
         TaskEntity task = taskMapper.toEntity(createDto, ownerId);
         return taskService.save(task);
     }
-
 
     @DeleteMapping("delete")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
@@ -81,7 +77,6 @@ public class TaskController {
         taskService.removeTaskEntity(deleteDto.taskId());
     }
 
-
     @PutMapping("update")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
     public void updateTask(@RequestBody @Valid TaskUpdateRequestDto updateDto) {
@@ -95,13 +90,11 @@ public class TaskController {
         taskService.updateTask(taskMapper.toEntity(updateDto, ownerId));
     }
 
-
     @GetMapping("{id}")
     public TaskResponseDto findTask(@PathVariable String id) {
         TaskEntity task = taskService.findTaskById(id);
         return taskMapper.toResponseDto(task);
     }
-
 
     @GetMapping
     public List<TaskResponseDto> findAllTasks() {

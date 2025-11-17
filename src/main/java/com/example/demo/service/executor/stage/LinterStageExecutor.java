@@ -5,6 +5,7 @@ import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -87,9 +88,9 @@ public class LinterStageExecutor implements StageExecutor{
     public boolean isPmdPassed(String pathToDir) {
         String[] content = {""};
 
-        Files.walkFileTree(Path.of(pathToDir), new SimpleFileVisitor<Path>() {
+        Files.walkFileTree(Path.of(pathToDir), new SimpleFileVisitor<>() {
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
                 if(file.getFileName().toString().equals("pmd.xml")){
                     content[0] = Files.readString(file);
                     return FileVisitResult.TERMINATE;
@@ -99,8 +100,4 @@ public class LinterStageExecutor implements StageExecutor{
         });
         return !content[0].contains("<violation");
     }
-
-
-
-
 }

@@ -2,13 +2,13 @@ package com.example.demo.controller;
 
 
 import com.example.demo.model.user.UserEntity;
+import com.example.demo.service.file.GitHubFileService;
 import com.example.demo.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
     private final UserService userService;
+    private final GitHubFileService fileService;
 
     @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("{userId}/grant-teacher")
@@ -23,6 +24,14 @@ public class UserController {
         userService.grantRole(userId, UserEntity.UserRole.TEACHER);
     }
 
+    /*
+    @GetMapping("repos")
+    public List<String> getAllGithubRepoIds(){
+
+    }
+
+
+     */
 
 
 }

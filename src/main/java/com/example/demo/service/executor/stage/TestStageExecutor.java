@@ -5,10 +5,10 @@ import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -90,7 +90,7 @@ public class TestStageExecutor implements StageExecutor {
 
         Files.walkFileTree(path, new SimpleFileVisitor<>() {
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
                 String fileName = file.getFileName().toString();
                 if (fileName.endsWith(".txt")) {
                     String content = Files.readString(file);
