@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Component("test")
@@ -43,12 +44,9 @@ public class TestStageExecutor implements StageExecutor {
         String containerReportsDir = "/app/solution_dir";
 
         String cmd = String.format(
-                "wget -O solution.zip %s && unzip solution.zip -d solution_dir " +
-                        "&& wget -O test.zip %s && unzip test.zip -d test_dir " +
-                        "&& SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) " +
-                        "&& mv test_dir/test/java/* $SOLUTION_DIR_NAME/src/test/java " +
-                        "&& cd $SOLUTION_DIR_NAME && mvn clean test -q",
-                solutionUri, testUri
+                testDockerCommand(solutionUri, testUri),
+                solutionUri,
+                testUri
         );
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
@@ -61,33 +59,26 @@ public class TestStageExecutor implements StageExecutor {
 
         Integer statusCode = jobResult.statusCode();
         String logs = jobResult.logs();
-        TestsResult passedTests = getPassedTests(hostReportsDir);
-        Integer score = passedTests.total == 0 ? 0 : (passedTests.passed / passedTests.total) * task.getTestsPoints();
-
-        submission.setLogs(logs);
-        submission.setScore(score);
+        TestsResult testsResult = getPassedTests(hostReportsDir);
+        Integer score = calculateScore(testsResult, task.getTestsPoints());
 
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", score);
 
-        if (statusCode == 0) {
-            submission.setStatus(SubmissionEntity.Status.ACCEPTED);
-            submissionService.save(submission);
-            chain.doNext(submission, chain);
-        } else {
-            submission.setStatus(SubmissionEntity.Status.WRONG_ANSWER);
-            submissionService.save(submission);
-        }
-    }
+        SubmissionEntity.Status status = determineStatus(statusCode, testsResult);
 
-    record TestsResult(Integer passed, Integer total) {}
+        submission.setStatus(status);
+        submission.setLogs(logs);
+        submission.setScore(score);
+
+        submissionService.save(submission);
+        chain.doNext(submission, chain);
+    }
 
     @SneakyThrows
     private TestsResult getPassedTests(String pathToFile) {
         Path path = new File(pathToFile).toPath();
-        final ThreadLocal<Integer> passed = new ThreadLocal<>();
-        final ThreadLocal<Integer> total = new ThreadLocal<>();
-
+        AtomicReference<TestsResult> result = new AtomicReference<>();
         Files.walkFileTree(path, new SimpleFileVisitor<>() {
             @Override
             public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
@@ -97,24 +88,52 @@ public class TestStageExecutor implements StageExecutor {
                     Arrays.stream(content.split("\n"))
                             .filter(line -> line.contains("Tests run:"))
                             .findFirst()
-                            .ifPresent(line -> {
-                                try {
-                                    String[] parts = line.split(", ");
-                                    int totalTests = Integer.parseInt(parts[0].split(":")[1].trim());
-                                    int failures = Integer.parseInt(parts[1].split(":")[1].trim());
-                                    int errors = Integer.parseInt(parts[2].split(":")[1].trim());
-                                    int skipped = Integer.parseInt(parts[3].split(":")[1].trim());
-                                    int passedTests = totalTests - failures - errors - skipped;
-                                    total.set(totalTests);
-                                    passed.set(passedTests);
-                                } catch (Exception e) {
-                                    log.error("Failed to parse test result line: {}", line, e);
-                                }
-                            });
+                            .ifPresent(line -> result.set(getTestResultParams(line)));
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
-        return new TestsResult(passed.get(), total.get());
+        return result.get();
     }
+
+    private TestsResult getTestResultParams(String line) {
+        String[] parts = line.split(", ");
+        int totalTests = Integer.parseInt(parts[0].split(":")[1].trim());
+        int failures = Integer.parseInt(parts[1].split(":")[1].trim());
+        int errors = Integer.parseInt(parts[2].split(":")[1].trim());
+        int skipped = Integer.parseInt(parts[3].split(":")[1].trim());
+        int timeout = parts.length > 5 ? Integer.parseInt(parts[4].split(":")[1].trim()) : 0; //optional field
+        System.out.println(Arrays.toString(parts));
+        int passedTests = totalTests - failures - errors - skipped - timeout;
+        return new TestsResult(totalTests, failures, errors, skipped, timeout, passedTests);
+    }
+
+    private String testDockerCommand(String solutionUri, String testUri) {
+        return String.format("""
+                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
+                wget -O test.zip %s && unzip test.zip -d test_dir &&
+                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
+                mv test_dir/test/java/* $SOLUTION_DIR_NAME/src/test/java &&
+                cd $SOLUTION_DIR_NAME && mvn clean test -q
+                """, solutionUri, testUri);
+    }
+
+    private Integer calculateScore(TestsResult testsResult, int totalPoints) {
+        return testsResult.passed() == 0 ? 0 : (testsResult.passed() / testsResult.total()) * totalPoints;
+    }
+
+    private SubmissionEntity.Status determineStatus(Integer statusCode, TestsResult testsResult) {
+        if (statusCode == 0) return SubmissionEntity.Status.ACCEPTED;
+        if (testsResult.timeout() != 0) return SubmissionEntity.Status.TIMELIMIT_EXCEEDED;
+        return SubmissionEntity.Status.WRONG_ANSWER;
+    }
+
+    private record TestsResult(
+            Integer total,
+            Integer failures,
+            Integer errors,
+            Integer skipped,
+            Integer timeout,
+            Integer passed
+    ) {}
 }

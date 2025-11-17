@@ -27,11 +27,11 @@ public class SubmissionService {
                 .logs("")
                 .score(null)
                 .build();
+
         return submissionRepository.save(taskSubmission);
     }
 
-    public Integer getNumberOfUserSubmissionsForTask(String taskId) {
-        String userId = userService.getCurrentUser().getId();
+    public Integer getNumberSubmissionsForTask(String userId, String taskId) {
         return submissionRepository.countByUserIdAndTaskId(userId, taskId);
     }
 
@@ -46,5 +46,9 @@ public class SubmissionService {
 
     public void save(SubmissionEntity submissionEntity) {
         submissionRepository.save(submissionEntity);
+    }
+
+    public List<SubmissionEntity> findAllSubmittedByUserId(String userId) {
+        return submissionRepository.findAllByUserId(userId);
     }
 }

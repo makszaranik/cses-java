@@ -21,7 +21,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 @Slf4j
 @Component("linter")
 @RequiredArgsConstructor
-public class LinterStageExecutor implements StageExecutor{
+public class LinterStageExecutor implements StageExecutor {
 
     private final TaskService taskService;
     private final DockerClientFacade dockerClientFacade;
@@ -42,12 +42,9 @@ public class LinterStageExecutor implements StageExecutor{
         String containerReportsDir = "/app/solution_dir";
 
         String cmd = String.format(
-                "wget -O solution.zip %s && unzip solution.zip -d solution_dir " +
-                        "&& wget -O linter.zip %s && unzip linter.zip -d linter_dir " +
-                        "&& SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) " +
-                        "&& mv linter_dir/* $SOLUTION_DIR_NAME/src/main/resources " +
-                        "&& cd $SOLUTION_DIR_NAME && mvn pmd:check -q",
-                solutionUri, linterUri
+                linterDockerCommand(solutionUri, linterUri),
+                solutionUri,
+                linterUri
         );
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
@@ -60,38 +57,34 @@ public class LinterStageExecutor implements StageExecutor{
 
         Integer statusCode = jobResult.statusCode();
         String logs = jobResult.logs();
+
+        SubmissionEntity.Status status = determineStatus(statusCode);
         boolean pmdPassed = isPmdPassed(hostReportsDir);
         Integer pmdScore = (pmdPassed) ? task.getLintersPoints() : 0;
 
-        if(pmdPassed){
+        if (pmdPassed) {
             Integer score = submission.getScore();
             submission.setScore(score + pmdScore);
         }
 
-        submission.setLogs(logs);
-
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", pmdScore);
 
-        if (statusCode == 0) {
-            submission.setStatus(SubmissionEntity.Status.LINTER_PASSED);
-            submissionService.save(submission);
-            chain.doNext(submission, chain);
-        } else {
-            submission.setStatus(SubmissionEntity.Status.LINTER_FAILED);
-            submissionService.save(submission);
-        }
+        log.info("Status code is {}", statusCode);
+        submission.setStatus(status);
+        submission.setLogs(logs);
 
+        submissionService.save(submission);
+        chain.doNext(submission, chain);
     }
 
     @SneakyThrows
     public boolean isPmdPassed(String pathToDir) {
         String[] content = {""};
-
         Files.walkFileTree(Path.of(pathToDir), new SimpleFileVisitor<>() {
             @Override
             public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
-                if(file.getFileName().toString().equals("pmd.xml")){
+                if (file.getFileName().toString().equals("pmd.xml")) {
                     content[0] = Files.readString(file);
                     return FileVisitResult.TERMINATE;
                 }
@@ -99,5 +92,23 @@ public class LinterStageExecutor implements StageExecutor{
             }
         });
         return !content[0].contains("<violation");
+    }
+
+    private SubmissionEntity.Status determineStatus(Integer statusCode) {
+        if (statusCode == 0) {
+            return SubmissionEntity.Status.LINTER_PASSED;
+        } else {
+            return SubmissionEntity.Status.LINTER_FAILED;
+        }
+    }
+
+    private String linterDockerCommand(String solutionUri, String linterUri) {
+        return String.format("""
+                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
+                wget -O linter.zip %s && unzip linter.zip -d linter_dir &&
+                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
+                mv linter_dir/* $SOLUTION_DIR_NAME/src/main/resources &&
+                cd $SOLUTION_DIR_NAME && mvn pmd:check -q
+                """, solutionUri, linterUri);
     }
 }

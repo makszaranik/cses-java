@@ -23,10 +23,7 @@ public class BuildStageExecutor implements StageExecutor {
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
 
         String cmd = String.format(
-                "wget -O solution.zip %s && unzip solution.zip -d solution_dir" +
-                        " && SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1)" +
-                        " && cd $SOLUTION_DIR_NAME" +
-                        " && mvn clean compile -q",
+                buildDockerCommand(solutionUri),
                 solutionUri
         );
 
@@ -36,17 +33,29 @@ public class BuildStageExecutor implements StageExecutor {
         );
 
         Integer statusCode = jobResult.statusCode();
+        SubmissionEntity.Status status = determineStatus(statusCode);
         String logs = jobResult.logs();
-        submission.setLogs(logs);
 
         log.info("Status code is {}", statusCode);
-        if (statusCode == 0) {
-            submission.setStatus(SubmissionEntity.Status.COMPILATION_SUCCESS);
-            submissionService.save(submission);
-            chain.doNext(submission, chain);
-        } else {
-            submission.setStatus(SubmissionEntity.Status.COMPILATION_ERROR);
-            submissionService.save(submission);
-        }
+        submission.setStatus(status);
+        submission.setLogs(logs);
+
+        submissionService.save(submission);
+        chain.doNext(submission, chain);
     }
+
+    private String buildDockerCommand(String solutionUri) {
+        return String.format("""
+                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
+                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
+                cd $SOLUTION_DIR_NAME && mvn clean compile -q
+                """, solutionUri);
+    }
+
+    private SubmissionEntity.Status determineStatus(Integer statusCode) {
+        return statusCode == 0 ? SubmissionEntity.Status.COMPILATION_SUCCESS
+                : SubmissionEntity.Status.COMPILATION_ERROR;
+    }
+
+
 }

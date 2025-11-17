@@ -41,6 +41,7 @@ public class SubmissionEntity implements Serializable {
         COMPILATION_ERROR,
         WRONG_ANSWER,
         ACCEPTED,
+        TIMELIMIT_EXCEEDED,
         LINTER_PASSED,
         LINTER_FAILED,
     }

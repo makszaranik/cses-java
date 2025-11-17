@@ -15,5 +15,5 @@ public interface SubmissionRepository extends MongoRepository<SubmissionEntity, 
     List<SubmissionEntity> findAllByStatus(SubmissionEntity.Status status);
     Optional<SubmissionEntity> findSubmissionEntityById(String id);
     Integer countByUserIdAndTaskId(String userId, String taskId);
-
+    List<SubmissionEntity> findAllByUserId(String userId);
 }

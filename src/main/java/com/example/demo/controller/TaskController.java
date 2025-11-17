@@ -4,6 +4,7 @@ import com.example.demo.dto.task.*;
 import com.example.demo.exceptions.SubmissionNotAllowedException;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
+import com.example.demo.model.user.UserEntity;
 import com.example.demo.service.event.EventService;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskMapper;
@@ -37,7 +38,8 @@ public class TaskController {
     @PreAuthorize("isAuthenticated()")
     public SubmissionEntity submitTask(@RequestBody @Valid TaskSubmissionRequestDto submitDto) {
         TaskEntity task = taskService.findTaskById(submitDto.taskId());
-        Integer submissionCount = submissionService.getNumberOfUserSubmissionsForTask(submitDto.taskId());
+        String userId = userService.getCurrentUser().getId();
+        Integer submissionCount = submissionService.getNumberSubmissionsForTask(userId, submitDto.taskId());
 
         if (submissionCount >= task.getSubmissionsNumberLimit()) {
             throw new SubmissionNotAllowedException("Number of submissions exceeded");

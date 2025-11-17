@@ -1,5 +1,6 @@
 package com.example.demo.service.github;
 
+import com.example.demo.dto.repo.RepoResponseDto;
 import com.example.demo.exceptions.ResourceNotFoundException;
 import com.example.demo.model.file.FileEntity;
 import com.example.demo.model.user.UserEntity;
@@ -74,7 +75,7 @@ public class GithubService {
     }
 
 
-    public List<RepoData> getAllUserReposNames(){
+    public List<RepoResponseDto> getAllUserReposNames(){
         String reposUri = "https://api.github.com/users/%s/repos";
 
         OAuth2AuthenticationToken authToken = (OAuth2AuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
@@ -91,11 +92,11 @@ public class GithubService {
         headers.setBearerAuth(accessToken);
 
         RestClient restClient = RestClient.create();
-        ResponseEntity<RepoData[]> response = restClient.get()
+        ResponseEntity<RepoResponseDto[]> response = restClient.get()
                 .uri(reposUriFormatted)
                 .headers(header -> header.addAll(headers))
                 .retrieve()
-                .toEntity(RepoData[].class);
+                .toEntity(RepoResponseDto[].class);
 
         if(response.getBody() == null){
             throw new ResourceNotFoundException("No repositories found");
@@ -103,9 +104,4 @@ public class GithubService {
 
         return List.of(response.getBody());
     }
-
-    public record RepoData(
-            String id,
-            String name
-    ){}
 }
