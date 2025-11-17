@@ -75,7 +75,7 @@ public class GithubService {
     }
 
 
-    public List<RepoResponseDto> getAllUserReposNames(){
+    public List<RepoResponseDto> getAllUserReposNames(String userId) {
         String reposUri = "https://api.github.com/users/%s/repos";
 
         OAuth2AuthenticationToken authToken = (OAuth2AuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
@@ -84,7 +84,7 @@ public class GithubService {
                 authToken.getName()
         );
 
-        UserEntity user = userService.getCurrentUser();
+        UserEntity user = userService.findUserById(userId);
         String accessToken = client.getAccessToken().getTokenValue();
         String reposUriFormatted = String.format(reposUri, user.getUsername());
 

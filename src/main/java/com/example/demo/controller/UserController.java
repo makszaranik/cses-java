@@ -2,21 +2,17 @@ package com.example.demo.controller;
 
 
 import com.example.demo.dto.repo.RepoResponseDto;
-import com.example.demo.dto.statistics.TaskStatsRecordDto;
-import com.example.demo.dto.statistics.UserStatsResponseDto;
-import com.example.demo.model.submission.SubmissionEntity;
-import com.example.demo.model.task.TaskEntity;
+import com.example.demo.dto.task.stats.UserStatsResponseDto;
 import com.example.demo.model.user.UserEntity;
 import com.example.demo.service.github.GithubService;
 import com.example.demo.service.submission.SubmissionService;
-import com.example.demo.service.task.TaskService;
 import com.example.demo.service.user.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -26,7 +22,6 @@ public class UserController {
     private final UserService userService;
     private final GithubService githubService;
     private final SubmissionService submissionService;
-    private final TaskService taskService;
 
     @PostMapping("{userId}/grant-teacher")
     @PreAuthorize("hasAuthority('ADMIN')")
@@ -34,20 +29,19 @@ public class UserController {
         userService.grantRole(userId, UserEntity.UserRole.TEACHER);
     }
 
-    @GetMapping("repos")
+    @GetMapping("github-repos")
     @PreAuthorize("isAuthenticated()")
-    public List<RepoResponseDto> getAllGithubRepoIds(){
-        return githubService.getAllUserReposNames();
+    public List<RepoResponseDto> getAllGithubRepos() {
+        String userId = userService.getCurrentUser().getId();
+        return githubService.getAllUserReposNames(userId);
     }
 
-    /*
-    @GetMapping("{userId}/stats")
+
+    @GetMapping("stats")
     @PreAuthorize("isAuthenticated()")
-    public UserStatsResponseDto getUserStats(@PathVariable String userId) {
-        List<SubmissionEntity> submissions = submissionService.findAllSubmittedByUserId(userId);
-
+    public UserStatsResponseDto getUserStats() {
+        String userId = userService.getCurrentUser().getId();
+        return submissionService.calculateStatisticsForTask(userId);
     }
-
-     */
 
 }

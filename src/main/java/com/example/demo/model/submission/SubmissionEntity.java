@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @Document("submissions")
 @NoArgsConstructor
 @AllArgsConstructor
-public class SubmissionEntity implements Serializable {
+public class SubmissionEntity {
 
     @Id
     private String id;

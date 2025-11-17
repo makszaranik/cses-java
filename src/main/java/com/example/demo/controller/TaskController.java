@@ -1,10 +1,10 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.task.*;
+import com.example.demo.exceptions.ScoreExceededException;
 import com.example.demo.exceptions.SubmissionNotAllowedException;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
-import com.example.demo.model.user.UserEntity;
 import com.example.demo.service.event.EventService;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskMapper;
@@ -61,6 +61,10 @@ public class TaskController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
     public String createTask(@RequestBody @Valid TaskCreateRequestDto createDto) {
+        if(createDto.testsPoints() + createDto.lintersPoints() != 100){
+            throw new ScoreExceededException("Score sum must be 100");
+        }
+
         String ownerId = userService.getCurrentUser().getId();
         TaskEntity task = taskMapper.toEntity(createDto, ownerId);
         return taskService.save(task);

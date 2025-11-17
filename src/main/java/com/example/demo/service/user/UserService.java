@@ -1,5 +1,6 @@
 package com.example.demo.service.user;
 
+import com.example.demo.exceptions.UserNotFoundException;
 import com.example.demo.model.user.UserEntity;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,13 +18,16 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    public Optional<UserEntity> findByUsername(String username) {
-        return userRepository.findByUsername(username);
+    public UserEntity findUserByUsername(String username) {
+        Optional<UserEntity> user = userRepository.findByUsername(username);
+        return user.orElseThrow(() -> new UserNotFoundException("User with username " + username + " not found"));
     }
 
-    public UserEntity save(UserEntity userEntity) {
-        return userRepository.save(userEntity);
+    public UserEntity findUserById(String userId) {
+        Optional<UserEntity> user = userRepository.findUserEntityById(userId);
+        return user.orElseThrow(() -> new UserNotFoundException("User with id " + userId + " not found"));
     }
+
 
     public UserEntity getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

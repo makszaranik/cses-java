@@ -1,6 +1,8 @@
 package com.example.demo.service.submission;
 
 
+import com.example.demo.dto.task.stats.TaskStatsResponseDto;
+import com.example.demo.dto.task.stats.UserStatsResponseDto;
 import com.example.demo.dto.task.TaskSubmissionRequestDto;
 import com.example.demo.exceptions.SubmissionNotFoundException;
 import com.example.demo.model.submission.SubmissionEntity;
@@ -48,7 +50,19 @@ public class SubmissionService {
         submissionRepository.save(submissionEntity);
     }
 
-    public List<SubmissionEntity> findAllSubmittedByUserId(String userId) {
-        return submissionRepository.findAllByUserId(userId);
+    public UserStatsResponseDto calculateStatisticsForTask(String userId) {
+        List<String> taskIds = submissionRepository.findAllByUserId(userId)
+                .stream()
+                .map(SubmissionEntity::getTaskId)
+                .toList();
+
+        List<TaskStatsResponseDto> tasks = taskIds.stream().map(taskId -> {
+            List<SubmissionRepository.StatusWrapper> statuses = submissionRepository.getTaskStatusStatistics(userId, taskId);
+            return new TaskStatsResponseDto(taskId, statuses);
+        }).toList();
+
+        return new UserStatsResponseDto(userId, tasks);
     }
+
+
 }
