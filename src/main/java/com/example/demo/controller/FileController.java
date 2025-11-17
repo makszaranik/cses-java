@@ -3,9 +3,10 @@ package com.example.demo.controller;
 import com.example.demo.model.file.FileEntity;
 import com.example.demo.model.file.FileEntity.FileType;
 import com.example.demo.service.file.FileUtilService;
-import com.example.demo.service.file.GitHubFileService;
+import com.example.demo.service.github.GithubService;
 import com.example.demo.service.user.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.http.*;
@@ -15,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("files")
@@ -22,7 +24,7 @@ public class FileController {
 
     private final FileUtilService fileUtilService;
     private final UserService userService;
-    private final GitHubFileService gitHubFileService;
+    private final GithubService githubService;
 
     @PostMapping("upload")
     @PreAuthorize("isAuthenticated()")
@@ -56,6 +58,7 @@ public class FileController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("github-save-zip/{repoName}")
     public FileEntity downloadGithubRepo(@PathVariable String repoName) {
-        return gitHubFileService.downloadAndSaveRepoToZip(repoName);
+        log.debug("repoName: {}", repoName);
+        return githubService.downloadAndSaveRepoToZip(repoName);
     }
 }

@@ -2,7 +2,7 @@ package com.example.demo.controller;
 
 
 import com.example.demo.model.user.UserEntity;
-import com.example.demo.service.file.GitHubFileService;
+import com.example.demo.service.github.GithubService;
 import com.example.demo.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,7 +16,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
-    private final GitHubFileService fileService;
+    private final GithubService githubService;
 
     @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("{userId}/grant-teacher")
@@ -24,14 +24,10 @@ public class UserController {
         userService.grantRole(userId, UserEntity.UserRole.TEACHER);
     }
 
-    /*
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("repos")
-    public List<String> getAllGithubRepoIds(){
-
+    public List<GithubService.RepoData> getAllGithubRepoIds(){
+        return githubService.getAllUserReposNames();
     }
-
-
-     */
-
 
 }
