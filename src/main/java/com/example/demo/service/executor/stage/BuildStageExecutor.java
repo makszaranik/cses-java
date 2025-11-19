@@ -22,12 +22,11 @@ public class BuildStageExecutor implements StageExecutor {
         String downloadPath = "http://host.docker.internal:8080/files/download/%s";
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
 
-        String cmd = String.format(
-                "wget -O solution.zip %s && unzip solution.zip -d solution_dir" +
-                        " && SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1)" +
-                        " && cd $SOLUTION_DIR_NAME" +
-                        " && mvn clean compile -q",
-                solutionUri
+        String cmd = String.format("""
+                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
+                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
+                cd $SOLUTION_DIR_NAME && mvn clean compile -q
+                """, solutionUri
         );
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJob(
@@ -39,7 +38,8 @@ public class BuildStageExecutor implements StageExecutor {
         String logs = jobResult.logs();
         submission.setLogs(logs);
 
-        log.info("Status code is {}", statusCode);
+        log.debug("Status code is {}", statusCode);
+
         if (statusCode == 0) {
             submission.setStatus(SubmissionEntity.Status.COMPILATION_SUCCESS);
             submissionService.save(submission);

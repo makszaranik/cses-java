@@ -25,8 +25,8 @@ public class StageExecutorChain {
     private void initExecutorChain() {
         stages = List.of(
                 buildStageExecutor,
-                testStageExecutor,
-                linterStageExecutor
+                linterStageExecutor,
+                testStageExecutor
         );
     }
 

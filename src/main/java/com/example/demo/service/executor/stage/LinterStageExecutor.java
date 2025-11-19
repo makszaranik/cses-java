@@ -5,6 +5,7 @@ import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +21,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 @Slf4j
 @Component("linter")
 @RequiredArgsConstructor
-public class LinterStageExecutor implements StageExecutor{
+public class LinterStageExecutor implements StageExecutor {
 
     private final TaskService taskService;
     private final DockerClientFacade dockerClientFacade;
@@ -40,13 +41,13 @@ public class LinterStageExecutor implements StageExecutor{
         String hostReportsDir = "/tmp/linter-results/" + submission.getId();
         String containerReportsDir = "/app/solution_dir";
 
-        String cmd = String.format(
-                "wget -O solution.zip %s && unzip solution.zip -d solution_dir " +
-                        "&& wget -O linter.zip %s && unzip linter.zip -d linter_dir " +
-                        "&& SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) " +
-                        "&& mv linter_dir/* $SOLUTION_DIR_NAME/src/main/resources " +
-                        "&& cd $SOLUTION_DIR_NAME && mvn pmd:check -q",
-                solutionUri, linterUri
+        String cmd = String.format("""
+                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
+                wget -O linter.zip %s && unzip linter.zip -d linter_dir &&
+                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
+                mv linter_dir/* $SOLUTION_DIR_NAME/src/main/resources &&
+                cd $SOLUTION_DIR_NAME && mvn pmd:check -q
+                """, solutionUri, linterUri
         );
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
@@ -59,14 +60,8 @@ public class LinterStageExecutor implements StageExecutor{
 
         Integer statusCode = jobResult.statusCode();
         String logs = jobResult.logs();
-        boolean pmdPassed = isPmdPassed(hostReportsDir);
-        Integer pmdScore = (pmdPassed) ? task.getLintersPoints() : 0;
-
-        if(pmdPassed){
-            Integer score = submission.getScore();
-            submission.setScore(score + pmdScore);
-        }
-
+        Integer pmdScore = isPmdPassed(hostReportsDir) ? task.getLintersPoints() : 0;
+        submission.setScore(submission.getScore() + pmdScore);
         submission.setLogs(logs);
 
         log.debug("Status code is {}", statusCode);
@@ -80,17 +75,15 @@ public class LinterStageExecutor implements StageExecutor{
             submission.setStatus(SubmissionEntity.Status.LINTER_FAILED);
             submissionService.save(submission);
         }
-
     }
 
     @SneakyThrows
     public boolean isPmdPassed(String pathToDir) {
         String[] content = {""};
-
-        Files.walkFileTree(Path.of(pathToDir), new SimpleFileVisitor<Path>() {
+        Files.walkFileTree(Path.of(pathToDir), new SimpleFileVisitor<>() {
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if(file.getFileName().toString().equals("pmd.xml")){
+            public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
+                if (file.getFileName().toString().equals("pmd.xml")) {
                     content[0] = Files.readString(file);
                     return FileVisitResult.TERMINATE;
                 }
@@ -99,8 +92,5 @@ public class LinterStageExecutor implements StageExecutor{
         });
         return !content[0].contains("<violation");
     }
-
-
-
 
 }

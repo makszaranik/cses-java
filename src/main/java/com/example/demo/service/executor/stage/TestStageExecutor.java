@@ -5,10 +5,10 @@ import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Component("test")
@@ -42,13 +43,13 @@ public class TestStageExecutor implements StageExecutor {
         String hostReportsDir = "/tmp/test-results/" + submission.getId();
         String containerReportsDir = "/app/solution_dir";
 
-        String cmd = String.format(
-                "wget -O solution.zip %s && unzip solution.zip -d solution_dir " +
-                        "&& wget -O test.zip %s && unzip test.zip -d test_dir " +
-                        "&& SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) " +
-                        "&& mv test_dir/test/java/* $SOLUTION_DIR_NAME/src/test/java " +
-                        "&& cd $SOLUTION_DIR_NAME && mvn clean test -q",
-                solutionUri, testUri
+        String cmd = String.format("""
+                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
+                wget -O test.zip %s && unzip test.zip -d test_dir &&
+                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
+                mv test_dir/test/java/* $SOLUTION_DIR_NAME/src/test/java &&
+                cd $SOLUTION_DIR_NAME && mvn clean test -q
+                """, solutionUri, testUri
         );
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
@@ -61,14 +62,14 @@ public class TestStageExecutor implements StageExecutor {
 
         Integer statusCode = jobResult.statusCode();
         String logs = jobResult.logs();
-        TestsResult passedTests = getPassedTests(hostReportsDir);
-        Integer score = passedTests.total == 0 ? 0 : (passedTests.passed / passedTests.total) * task.getTestsPoints();
+        TestsResult testsResult = getTestResult(hostReportsDir);
+        Integer score = calculateScore(testsResult.passed(), testsResult.total(), task.getTestsPoints());
 
         submission.setLogs(logs);
         submission.setScore(score);
 
-        log.debug("Status code is {}", statusCode);
-        log.debug("Score is {}", score);
+        log.info("Status code is {}", statusCode);
+        log.info("Score is {}", score);
 
         if (statusCode == 0) {
             submission.setStatus(SubmissionEntity.Status.ACCEPTED);
@@ -80,41 +81,51 @@ public class TestStageExecutor implements StageExecutor {
         }
     }
 
-    record TestsResult(Integer passed, Integer total) {}
-
     @SneakyThrows
-    private TestsResult getPassedTests(String pathToFile) {
+    private TestsResult getTestResult(String pathToFile) {
         Path path = new File(pathToFile).toPath();
-        final ThreadLocal<Integer> passed = new ThreadLocal<>();
-        final ThreadLocal<Integer> total = new ThreadLocal<>();
-
+        AtomicReference<TestsResult> result = new AtomicReference<>();
         Files.walkFileTree(path, new SimpleFileVisitor<>() {
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
                 String fileName = file.getFileName().toString();
                 if (fileName.endsWith(".txt")) {
                     String content = Files.readString(file);
                     Arrays.stream(content.split("\n"))
                             .filter(line -> line.contains("Tests run:"))
                             .findFirst()
-                            .ifPresent(line -> {
-                                try {
-                                    String[] parts = line.split(", ");
-                                    int totalTests = Integer.parseInt(parts[0].split(":")[1].trim());
-                                    int failures = Integer.parseInt(parts[1].split(":")[1].trim());
-                                    int errors = Integer.parseInt(parts[2].split(":")[1].trim());
-                                    int skipped = Integer.parseInt(parts[3].split(":")[1].trim());
-                                    int passedTests = totalTests - failures - errors - skipped;
-                                    total.set(totalTests);
-                                    passed.set(passedTests);
-                                } catch (Exception e) {
-                                    log.error("Failed to parse test result line: {}", line, e);
-                                }
-                            });
+                            .ifPresent(line -> result.set(getTestResultParams(line)));
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
-        return new TestsResult(passed.get(), total.get());
+        return result.get();
     }
+
+    private TestsResult getTestResultParams(String line) {
+        String[] parts = line.split(", ");
+        int totalTests = Integer.parseInt(parts[0].split(":")[1].trim());
+        int failures = Integer.parseInt(parts[1].split(":")[1].trim());
+        int errors = Integer.parseInt(parts[2].split(":")[1].trim());
+        int skipped = Integer.parseInt(parts[3].split(":")[1].trim());
+        int timeout = 0; //optional field
+        if(line.contains("timeout")){
+            timeout = Integer.parseInt(parts[4].split(":")[1].trim());
+        }
+        int passedTests = totalTests - failures - errors - skipped - timeout;
+        return new TestsResult(totalTests, failures, errors, skipped, timeout, passedTests);
+    }
+
+    private Integer calculateScore(int passed, int total, int points) {
+        return passed == 0 ? 0 : (passed / total) * points;
+    }
+
+    private record TestsResult(
+            Integer total,
+            Integer failures,
+            Integer errors,
+            Integer skipped,
+            Integer timeout,
+            Integer passed
+    ) {}
 }

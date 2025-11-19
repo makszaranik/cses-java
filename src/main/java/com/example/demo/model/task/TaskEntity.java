@@ -37,6 +37,4 @@ public class TaskEntity {
     @LastModifiedDate
     private LocalDateTime lastModifiedAt;
 
-
-
 }

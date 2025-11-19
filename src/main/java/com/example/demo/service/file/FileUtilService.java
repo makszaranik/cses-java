@@ -29,6 +29,7 @@ public class FileUtilService {
                                  String contentType,
                                  FileType fileType,
                                  String ownerId) {
+
         String gridFsFileId = gridFsTemplate
                 .store(inputStream, originalFilename, contentType)
                 .toString();

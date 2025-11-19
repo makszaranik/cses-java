@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.task.*;
+import com.example.demo.exceptions.ScoreExceededException;
 import com.example.demo.exceptions.SubmissionNotAllowedException;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
@@ -37,7 +38,8 @@ public class TaskController {
     @PreAuthorize("isAuthenticated()")
     public SubmissionEntity submitTask(@RequestBody @Valid TaskSubmissionRequestDto submitDto) {
         TaskEntity task = taskService.findTaskById(submitDto.taskId());
-        Integer submissionCount = submissionService.getNumberOfUserSubmissionsForTask(submitDto.taskId());
+        String userId = userService.getCurrentUser().getId();
+        Integer submissionCount = submissionService.getNumberSubmissionsForTask(userId, submitDto.taskId());
 
         if (submissionCount >= task.getSubmissionsNumberLimit()) {
             throw new SubmissionNotAllowedException("Number of submissions exceeded");
@@ -45,8 +47,6 @@ public class TaskController {
 
         return submissionService.createSubmission(submitDto);
     }
-
-
 
     @GetMapping("status")
     @PreAuthorize("isAuthenticated()")
@@ -57,16 +57,18 @@ public class TaskController {
         return emitter;
     }
 
-
     @PostMapping("create")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
     public String createTask(@RequestBody @Valid TaskCreateRequestDto createDto) {
+        if(createDto.testsPoints() + createDto.lintersPoints() != 100){
+            throw new ScoreExceededException("Score sum must be 100");
+        }
+
         String ownerId = userService.getCurrentUser().getId();
         TaskEntity task = taskMapper.toEntity(createDto, ownerId);
         return taskService.save(task);
     }
-
 
     @DeleteMapping("delete")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
@@ -81,7 +83,6 @@ public class TaskController {
         taskService.removeTaskEntity(deleteDto.taskId());
     }
 
-
     @PutMapping("update")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
     public void updateTask(@RequestBody @Valid TaskUpdateRequestDto updateDto) {
@@ -95,13 +96,11 @@ public class TaskController {
         taskService.updateTask(taskMapper.toEntity(updateDto, ownerId));
     }
 
-
     @GetMapping("{id}")
     public TaskResponseDto findTask(@PathVariable String id) {
         TaskEntity task = taskService.findTaskById(id);
         return taskMapper.toResponseDto(task);
     }
-
 
     @GetMapping
     public List<TaskResponseDto> findAllTasks() {

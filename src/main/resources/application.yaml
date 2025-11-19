@@ -2,6 +2,8 @@ spring:
   data:
     mongodb:
       uri: mongodb://localhost:27017/demo?replicaSet=rs0&directConnection=true
+  restclient:
+    redirect: follow
   security:
     oauth2:
       client:

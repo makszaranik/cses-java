@@ -11,5 +11,6 @@ import java.util.Optional;
 public interface FileRepository extends MongoRepository<FileEntity, String> {
 
     List<FileEntity> findAllByOwnerId(String ownerId);
+
     Optional<FileEntity> findByGridFSFileId(String gridFSFileId);
 }
