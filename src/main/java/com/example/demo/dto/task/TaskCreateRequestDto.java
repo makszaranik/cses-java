@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotNull;
 public record TaskCreateRequestDto(
         @NotNull @NotBlank String title,
         @NotNull @NotBlank String statement,
-        @Min(0) int memoryRestriction,
+        @Min(6) @Max(512) Long memoryRestriction,
         @NotNull String solutionTemplateFileId,
         @NotNull String testsFileId,
         @NotNull String lintersFileId,

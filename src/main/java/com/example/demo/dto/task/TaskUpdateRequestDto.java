@@ -9,7 +9,7 @@ public record TaskUpdateRequestDto(
         @NotNull String taskId,
         @NotNull @NotBlank String title,
         @NotNull @NotBlank String statement,
-        @Min(0) int memoryRestriction,
+        @Min(6) @Max(512) Long memoryRestriction,
         @NotNull String solutionTemplateFileId,
         @NotNull String testsFileId,
         @NotNull String lintersFileId,
