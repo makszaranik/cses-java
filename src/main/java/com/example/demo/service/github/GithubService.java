@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.io.ByteArrayInputStream;
+import java.net.http.HttpClient;
 import java.util.List;
 
 @Service

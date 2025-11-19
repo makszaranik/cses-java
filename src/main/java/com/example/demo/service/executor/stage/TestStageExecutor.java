@@ -43,10 +43,13 @@ public class TestStageExecutor implements StageExecutor {
         String hostReportsDir = "/tmp/test-results/" + submission.getId();
         String containerReportsDir = "/app/solution_dir";
 
-        String cmd = String.format(
-                testDockerCommand(solutionUri, testUri),
-                solutionUri,
-                testUri
+        String cmd = String.format("""
+                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
+                wget -O test.zip %s && unzip test.zip -d test_dir &&
+                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
+                mv test_dir/test/java/* $SOLUTION_DIR_NAME/src/test/java &&
+                cd $SOLUTION_DIR_NAME && mvn clean test -q
+                """, solutionUri, testUri
         );
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
@@ -59,24 +62,27 @@ public class TestStageExecutor implements StageExecutor {
 
         Integer statusCode = jobResult.statusCode();
         String logs = jobResult.logs();
-        TestsResult testsResult = getPassedTests(hostReportsDir);
-        Integer score = calculateScore(testsResult, task.getTestsPoints());
+        TestsResult testsResult = getTestResult(hostReportsDir);
+        Integer score = calculateScore(testsResult.passed(), testsResult.total(), task.getTestsPoints());
 
-        log.debug("Status code is {}", statusCode);
-        log.debug("Score is {}", score);
-
-        SubmissionEntity.Status status = determineStatus(statusCode, testsResult);
-
-        submission.setStatus(status);
         submission.setLogs(logs);
         submission.setScore(score);
 
-        submissionService.save(submission);
-        chain.doNext(submission, chain);
+        log.info("Status code is {}", statusCode);
+        log.info("Score is {}", score);
+
+        if (statusCode == 0) {
+            submission.setStatus(SubmissionEntity.Status.ACCEPTED);
+            submissionService.save(submission);
+            chain.doNext(submission, chain);
+        } else {
+            submission.setStatus(SubmissionEntity.Status.WRONG_ANSWER);
+            submissionService.save(submission);
+        }
     }
 
     @SneakyThrows
-    private TestsResult getPassedTests(String pathToFile) {
+    private TestsResult getTestResult(String pathToFile) {
         Path path = new File(pathToFile).toPath();
         AtomicReference<TestsResult> result = new AtomicReference<>();
         Files.walkFileTree(path, new SimpleFileVisitor<>() {
@@ -102,30 +108,16 @@ public class TestStageExecutor implements StageExecutor {
         int failures = Integer.parseInt(parts[1].split(":")[1].trim());
         int errors = Integer.parseInt(parts[2].split(":")[1].trim());
         int skipped = Integer.parseInt(parts[3].split(":")[1].trim());
-        int timeout = parts.length > 5 ? Integer.parseInt(parts[4].split(":")[1].trim()) : 0; //optional field
-        System.out.println(Arrays.toString(parts));
+        int timeout = 0; //optional field
+        if(line.contains("timeout")){
+            timeout = Integer.parseInt(parts[4].split(":")[1].trim());
+        }
         int passedTests = totalTests - failures - errors - skipped - timeout;
         return new TestsResult(totalTests, failures, errors, skipped, timeout, passedTests);
     }
 
-    private String testDockerCommand(String solutionUri, String testUri) {
-        return String.format("""
-                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
-                wget -O test.zip %s && unzip test.zip -d test_dir &&
-                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
-                mv test_dir/test/java/* $SOLUTION_DIR_NAME/src/test/java &&
-                cd $SOLUTION_DIR_NAME && mvn clean test -q
-                """, solutionUri, testUri);
-    }
-
-    private Integer calculateScore(TestsResult testsResult, int totalPoints) {
-        return testsResult.passed() == 0 ? 0 : (testsResult.passed() / testsResult.total()) * totalPoints;
-    }
-
-    private SubmissionEntity.Status determineStatus(Integer statusCode, TestsResult testsResult) {
-        if (statusCode == 0) return SubmissionEntity.Status.ACCEPTED;
-        if (testsResult.timeout() != 0) return SubmissionEntity.Status.TIMELIMIT_EXCEEDED;
-        return SubmissionEntity.Status.WRONG_ANSWER;
+    private Integer calculateScore(int passed, int total, int points) {
+        return passed == 0 ? 0 : (passed / total) * points;
     }
 
     private record TestsResult(

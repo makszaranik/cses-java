@@ -41,10 +41,13 @@ public class LinterStageExecutor implements StageExecutor {
         String hostReportsDir = "/tmp/linter-results/" + submission.getId();
         String containerReportsDir = "/app/solution_dir";
 
-        String cmd = String.format(
-                linterDockerCommand(solutionUri, linterUri),
-                solutionUri,
-                linterUri
+        String cmd = String.format("""
+                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
+                wget -O linter.zip %s && unzip linter.zip -d linter_dir &&
+                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
+                mv linter_dir/* $SOLUTION_DIR_NAME/src/main/resources &&
+                cd $SOLUTION_DIR_NAME && mvn pmd:check -q
+                """, solutionUri, linterUri
         );
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
@@ -57,25 +60,21 @@ public class LinterStageExecutor implements StageExecutor {
 
         Integer statusCode = jobResult.statusCode();
         String logs = jobResult.logs();
-
-        SubmissionEntity.Status status = determineStatus(statusCode);
-        boolean pmdPassed = isPmdPassed(hostReportsDir);
-        Integer pmdScore = (pmdPassed) ? task.getLintersPoints() : 0;
-
-        if (pmdPassed) {
-            Integer score = submission.getScore();
-            submission.setScore(score + pmdScore);
-        }
+        Integer pmdScore = isPmdPassed(hostReportsDir) ? task.getLintersPoints() : 0;
+        submission.setScore(submission.getScore() + pmdScore);
+        submission.setLogs(logs);
 
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", pmdScore);
 
-        log.info("Status code is {}", statusCode);
-        submission.setStatus(status);
-        submission.setLogs(logs);
-
-        submissionService.save(submission);
-        chain.doNext(submission, chain);
+        if (statusCode == 0) {
+            submission.setStatus(SubmissionEntity.Status.LINTER_PASSED);
+            submissionService.save(submission);
+            chain.doNext(submission, chain);
+        } else {
+            submission.setStatus(SubmissionEntity.Status.LINTER_FAILED);
+            submissionService.save(submission);
+        }
     }
 
     @SneakyThrows
@@ -94,21 +93,4 @@ public class LinterStageExecutor implements StageExecutor {
         return !content[0].contains("<violation");
     }
 
-    private SubmissionEntity.Status determineStatus(Integer statusCode) {
-        if (statusCode == 0) {
-            return SubmissionEntity.Status.LINTER_PASSED;
-        } else {
-            return SubmissionEntity.Status.LINTER_FAILED;
-        }
-    }
-
-    private String linterDockerCommand(String solutionUri, String linterUri) {
-        return String.format("""
-                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
-                wget -O linter.zip %s && unzip linter.zip -d linter_dir &&
-                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
-                mv linter_dir/* $SOLUTION_DIR_NAME/src/main/resources &&
-                cd $SOLUTION_DIR_NAME && mvn pmd:check -q
-                """, solutionUri, linterUri);
-    }
 }
