@@ -8,7 +8,7 @@ import org.springframework.web.client.RestClient;
 import java.net.http.HttpClient;
 
 @Configuration
-public class WebConfig {
+public class RestClientConfig {
 
     @Bean
     public HttpClient httpClient() {
