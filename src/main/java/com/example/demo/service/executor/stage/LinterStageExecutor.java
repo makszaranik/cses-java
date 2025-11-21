@@ -1,5 +1,6 @@
 package com.example.demo.service.executor.stage;
 
+import com.example.demo.config.DockerConfig;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
@@ -18,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Component("linter")
@@ -27,12 +29,7 @@ public class LinterStageExecutor implements StageExecutor {
     private final TaskService taskService;
     private final DockerClientFacade dockerClientFacade;
     private final SubmissionService submissionService;
-
-    @Value("${spring.docker-client.scripts.linter}")
-    private String linterCommand;
-
-    @Value("${spring.docker-client.containers.linter}")
-    private String containerName;
+    private final DockerConfig.DockerClientProperties properties;
 
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
@@ -41,17 +38,17 @@ public class LinterStageExecutor implements StageExecutor {
         String lintersFileId = task.getLintersFileId();
         Long memoryRestriction = task.getMemoryRestriction();
 
-        String downloadPath = "http://host.docker.internal:8080/files/download/%s";
+        String downloadPath = properties.downloadUriTemplate();
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
         String linterUri = String.format(downloadPath, lintersFileId);
 
         String hostReportsDir = "/tmp/linter-results/" + submission.getId();
         String containerReportsDir = "/app/solution_dir";
 
-        String cmd = String.format(linterCommand, solutionUri, linterUri);
+        String cmd = String.format(properties.scripts().linter(), solutionUri, linterUri);
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
-                containerName,
+                properties.containers().linter(),
                 hostReportsDir,
                 containerReportsDir,
                 memoryRestriction,
@@ -79,18 +76,19 @@ public class LinterStageExecutor implements StageExecutor {
 
     @SneakyThrows
     public boolean isPmdPassed(String pathToDir) {
-        String[] content = {""};
+        AtomicReference<String> result = new AtomicReference<>();
         Files.walkFileTree(Path.of(pathToDir), new SimpleFileVisitor<>() {
+            @NonNull
             @Override
             public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
                 if (file.getFileName().toString().equals("pmd.xml")) {
-                    content[0] = Files.readString(file);
+                    result.set(Files.readString(file));
                     return FileVisitResult.TERMINATE;
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
-        return !content[0].contains("<violation");
+        return !result.get().contains("<violation");
     }
 
 }

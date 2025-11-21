@@ -1,5 +1,6 @@
 package com.example.demo.service.executor.stage;
 
+import com.example.demo.config.DockerConfig;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
@@ -30,12 +31,7 @@ public class TestStageExecutor implements StageExecutor {
     private final TaskService taskService;
     private final DockerClientFacade dockerClientFacade;
     private final SubmissionService submissionService;
-
-    @Value("${spring.docker-client.scripts.test}")
-    private String testCommand;
-
-    @Value("${spring.docker-client.containers.test}")
-    private String containerName;
+    private final DockerConfig.DockerClientProperties properties;
 
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
@@ -44,17 +40,17 @@ public class TestStageExecutor implements StageExecutor {
         String testsFileId = task.getTestsFileId();
         Long memoryRestriction = task.getMemoryRestriction();
 
-        String downloadPath = "http://host.docker.internal:8080/files/download/%s";
+        String downloadPath = properties.downloadUriTemplate();
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
         String testUri = String.format(downloadPath, testsFileId);
 
         String hostReportsDir = "/tmp/test-results/" + submission.getId();
         String containerReportsDir = "/app/solution_dir";
 
-        String cmd = String.format(testCommand, solutionUri, testUri);
+        String cmd = String.format(properties.scripts().test(), solutionUri, testUri);
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
-                containerName,
+                properties.containers().test(),
                 hostReportsDir,
                 containerReportsDir,
                 memoryRestriction,
@@ -87,6 +83,7 @@ public class TestStageExecutor implements StageExecutor {
         Path path = new File(pathToFile).toPath();
         AtomicReference<TestsResult> result = new AtomicReference<>();
         Files.walkFileTree(path, new SimpleFileVisitor<>() {
+            @NonNull
             @Override
             public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
                 String fileName = file.getFileName().toString();

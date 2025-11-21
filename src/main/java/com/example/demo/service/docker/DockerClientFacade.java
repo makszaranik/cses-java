@@ -1,5 +1,6 @@
 package com.example.demo.service.docker;
 
+import com.example.demo.config.DockerConfig;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
@@ -23,12 +24,7 @@ import java.util.concurrent.TimeUnit;
 public class DockerClientFacade {
 
     private final DockerClient dockerClient;
-
-    @Value("${spring.docker-client.container.host-name}")
-    private String hostName;
-
-    @Value("${spring.docker-client.container.image-name}")
-    private String imageName;
+    private final DockerConfig.DockerClientProperties properties;
 
     public DockerJobResult runJob(String containerName, Long memoryRestriction, String... args) {
         String containerId = null;
@@ -76,10 +72,10 @@ public class DockerClientFacade {
     }
 
     public String createAndRunContainer(String name, Long memoryRestriction, String... args) {
-        var container = dockerClient.createContainerCmd(imageName)
+        var container = dockerClient.createContainerCmd(properties.container().imageName())
                 .withCmd(args)
                 .withHostConfig(HostConfig.newHostConfig()
-                        .withNetworkMode(hostName)
+                        .withNetworkMode(properties.container().hostName())
                         .withMemory(memoryRestriction * 1024L * 1024L)) //mb
                 .withTty(true)
                 .withName(name)
@@ -90,10 +86,10 @@ public class DockerClientFacade {
     }
 
     public String createAndRunContainerWithVolume(String containerName, String hostDir, String containerDir, Long memoryRestriction, String... args) {
-        CreateContainerResponse container = dockerClient.createContainerCmd(imageName)
+        CreateContainerResponse container = dockerClient.createContainerCmd(properties.container().imageName())
                 .withCmd(args)
                 .withHostConfig(HostConfig.newHostConfig()
-                        .withNetworkMode(hostName)
+                        .withNetworkMode(properties.container().hostName())
                         .withBinds(new Bind(hostDir, new Volume(containerDir)))
                         .withMemory(memoryRestriction * 1024L * 1024L)) //mb
                 .withTty(true)

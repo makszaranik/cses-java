@@ -6,6 +6,7 @@ spring:
     container:
       image-name: java-maven-env
       host-name: demo_default
+      download-uri-template: http://host.docker.internal:8080/files/download/%s
     containers:
       build: build_container
       test: test_container

@@ -1,5 +1,6 @@
 package com.example.demo.service.executor.stage;
 
+import com.example.demo.config.DockerConfig;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
@@ -18,12 +19,7 @@ public class BuildStageExecutor implements StageExecutor {
     private final DockerClientFacade dockerClientFacade;
     private final SubmissionService submissionService;
     private final TaskService taskService;
-
-    @Value("${spring.docker-client.scripts.build}")
-    private String buildCommand;
-
-    @Value("${spring.docker-client.containers.build}")
-    private String containerName;
+    private final DockerConfig.DockerClientProperties properties;
 
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
@@ -32,13 +28,13 @@ public class BuildStageExecutor implements StageExecutor {
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         Long memoryRestriction = task.getMemoryRestriction();
 
-        String downloadPath = "http://host.docker.internal:8080/files/download/%s";
+        String downloadPath = properties.downloadUriTemplate();
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
 
-        String cmd = String.format(buildCommand, solutionUri);
+        String cmd = String.format(properties.scripts().build(), solutionUri);
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJob(
-                containerName,
+                properties.containers().build(),
                 memoryRestriction,
                 "/bin/bash", "-c", cmd
         );
