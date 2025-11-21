@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -23,6 +24,10 @@ public class UserService {
         return user.orElseThrow(() -> new UserNotFoundException("User with username " + username + " not found"));
     }
 
+    public List<UserEntity> findAllUsers() {
+        return userRepository.findAll();
+    }
+
     public UserEntity findUserById(String userId) {
         Optional<UserEntity> user = userRepository.findUserEntityById(userId);
         return user.orElseThrow(() -> new UserNotFoundException("User with id " + userId + " not found"));
@@ -31,8 +36,8 @@ public class UserService {
 
     public UserEntity getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof CustomOAuth2User) {
-            return ((CustomOAuth2User) authentication.getPrincipal()).getUserEntity();
+        if (authentication != null && authentication.getPrincipal() instanceof CustomOAuth2User principal) {
+            return principal.getUserEntity();
         }
         return null;
     }
