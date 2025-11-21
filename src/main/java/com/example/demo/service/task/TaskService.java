@@ -22,10 +22,9 @@ public class TaskService {
     }
 
     public TaskEntity findTaskById(String id){
-        return taskRepository.findTaskEntityById(id).orElseThrow(() -> {
-            String message = String.format("Task with id %s not found", id);
-            return new IllegalStateException(message);
-        });
+        return taskRepository.findTaskEntityById(id).orElseThrow(() ->
+                new IllegalStateException(String.format("Task with id %s not found", id))
+        );
     }
 
     public void removeTaskEntity(String id){

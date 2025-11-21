@@ -33,6 +33,7 @@ public class LinterStageExecutor implements StageExecutor {
         log.info("Linter stage for submission {}.", submission.getId());
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         String lintersFileId = task.getLintersFileId();
+        Long memoryRestriction = task.getMemoryRestriction();
 
         String downloadPath = "http://host.docker.internal:8080/files/download/%s";
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
@@ -54,8 +55,8 @@ public class LinterStageExecutor implements StageExecutor {
                 "linter_container",
                 hostReportsDir,
                 containerReportsDir,
-                "/bin/bash", "-c",
-                cmd
+                memoryRestriction,
+                "/bin/bash", "-c", cmd
         );
 
         Integer statusCode = jobResult.statusCode();

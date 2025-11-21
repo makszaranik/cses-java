@@ -85,15 +85,20 @@ public class TaskController {
 
     @PutMapping("update")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
-    public void updateTask(@RequestBody @Valid TaskUpdateRequestDto updateDto) {
+    public TaskResponseDto updateTask(@RequestBody @Valid TaskUpdateRequestDto updateDto) {
         TaskEntity task = taskService.findTaskById(updateDto.taskId());
         String ownerId = userService.getCurrentUser().getId();
+
+        if(updateDto.testsPoints() + updateDto.lintersPoints() != 100){
+            throw new ScoreExceededException("Score sum must be 100");
+        }
 
         if (!ownerId.equals(task.getOwnerId())) {
             throw new AccessDeniedException("You are not allowed to update this task");
         }
 
-        taskService.updateTask(taskMapper.toEntity(updateDto, ownerId));
+        TaskEntity updatedTask = taskService.updateTask(taskMapper.toEntity(updateDto, ownerId));
+        return taskMapper.toResponseDto(updatedTask);
     }
 
     @GetMapping("{id}")

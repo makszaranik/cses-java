@@ -25,6 +25,7 @@ public class TaskMapper {
 
     public TaskEntity toEntity(TaskUpdateRequestDto createDto, String ownerId) {
         return TaskEntity.builder()
+                .id(createDto.taskId())
                 .title(createDto.title())
                 .statement(createDto.statement())
                 .memoryRestriction(createDto.memoryRestriction())

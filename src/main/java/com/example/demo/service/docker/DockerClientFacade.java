@@ -20,12 +20,15 @@ import java.util.concurrent.TimeUnit;
 @Component
 @RequiredArgsConstructor
 public class DockerClientFacade {
-    private final DockerClient dockerClient;
 
-    public DockerJobResult runJob(String containerName, String... args) {
+    private final DockerClient dockerClient;
+    private static final String CONTAINER_IMAGE_NAME = "java-maven-ci";
+    private static final String HOST_NAME = "demo_default";
+
+    public DockerJobResult runJob(String containerName, Long memoryRestriction, String... args) {
         String containerId = null;
         try {
-            containerId = createAndStartContainer(containerName, args);
+            containerId = createAndRunContainer(containerName, memoryRestriction, args);
             log.debug("container with id {} running.", containerId);
             int status = getStatusCode(containerId);
             String logs = collectLogs(containerId);
@@ -41,27 +44,15 @@ public class DockerClientFacade {
         }
     }
 
-    public DockerJobResult runJobWithVolume(String containerName, String hostDir, String containerDir, String... args) {
+    public DockerJobResult runJobWithVolume(String containerName, String hostDir, String containerDir, Long memoryRestriction, String... args) {
         String containerId = null;
         boolean mkdir = new File(hostDir).mkdirs();
         try {
-            CreateContainerResponse container = dockerClient.createContainerCmd("java-maven-ci")
-                    .withCmd(args)
-                    .withHostConfig(HostConfig.newHostConfig()
-                            .withNetworkMode("demo_default")
-                            .withBinds(new Bind(hostDir, new Volume(containerDir))))
-                    .withTty(true)
-                    .withName(containerName)
-                    .exec();
-
-            containerId = container.getId();
-            dockerClient.startContainerCmd(containerId).exec();
+            containerId = createAndRunContainerWithVolume(containerName, hostDir, containerDir, memoryRestriction, args);
             log.debug("container with id {} running with volume.", containerId);
-
             int status = getStatusCode(containerId);
             String logs = collectLogs(containerId);
             log.debug("container with id {} finished with status code {}.", containerId, status);
-
             return new DockerJobResult(status, logs);
 
         } catch (Exception e) {
@@ -79,12 +70,29 @@ public class DockerClientFacade {
                 .awaitStatusCode(60, TimeUnit.SECONDS);
     }
 
-    public String createAndStartContainer(String name, String... args) {
+    public String createAndRunContainer(String name, Long memoryRestriction, String... args) {
         var container = dockerClient.createContainerCmd("java-maven-ci")
                 .withCmd(args)
-                .withHostConfig(HostConfig.newHostConfig().withNetworkMode("demo_default"))
+                .withHostConfig(HostConfig.newHostConfig()
+                        .withNetworkMode("demo_default")
+                        .withMemory(memoryRestriction * 1024L * 1024L)) //mb
                 .withTty(true)
                 .withName(name)
+                .exec();
+
+        dockerClient.startContainerCmd(container.getId()).exec();
+        return container.getId();
+    }
+
+    public String createAndRunContainerWithVolume(String containerName, String hostDir, String containerDir, Long memoryRestriction, String... args) {
+        CreateContainerResponse container = dockerClient.createContainerCmd("java-maven-ci")
+                .withCmd(args)
+                .withHostConfig(HostConfig.newHostConfig()
+                        .withNetworkMode("demo_default")
+                        .withBinds(new Bind(hostDir, new Volume(containerDir)))
+                        .withMemory(memoryRestriction * 1024L * 1024L)) //mb
+                .withTty(true)
+                .withName(containerName)
                 .exec();
 
         dockerClient.startContainerCmd(container.getId()).exec();

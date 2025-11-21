@@ -23,7 +23,7 @@ public class TaskEntity {
     private String title;
     private String statement;
     private String ownerId;
-    private int memoryRestriction;
+    private Long memoryRestriction;
     private String solutionTemplateFileId;
     private String testsFileId;
     private String lintersFileId;

@@ -27,7 +27,7 @@ public class SubmissionService {
                 .sourceCodeFileId(submitDto.sourceCodeFileId())
                 .status(SubmissionEntity.Status.SUBMITTED)
                 .logs("")
-                .score(null)
+                .score(0)
                 .build();
 
         return submissionRepository.save(taskSubmission);
@@ -56,12 +56,18 @@ public class SubmissionService {
                 .map(SubmissionEntity::getTaskId)
                 .toList();
 
-        List<TaskStatsResponseDto> tasks = taskIds.stream().map(taskId -> {
-            List<SubmissionRepository.StatusWrapper> statuses = submissionRepository.getTaskStatusStatistics(userId, taskId);
-            return new TaskStatsResponseDto(taskId, statuses);
-        }).toList();
+        List<TaskStatsResponseDto> tasks = taskIds.stream()
+                .map(taskId -> {
+                    List<SubmissionRepository.StatusWrapper> statuses = submissionRepository.getTaskStatusStatistics(userId, taskId);
+                    return new TaskStatsResponseDto(taskId, statuses);
+                })
+                .toList();
 
         return new UserStatsResponseDto(userId, tasks);
+    }
+
+    public List<SubmissionEntity> getSubmissionsByUser(String userId) {
+        return submissionRepository.findAllByUserId(userId);
     }
 
 

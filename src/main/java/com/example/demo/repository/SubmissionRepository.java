@@ -17,14 +17,14 @@ public interface SubmissionRepository extends MongoRepository<SubmissionEntity, 
 
     Optional<SubmissionEntity> findSubmissionEntityById(String id);
 
-    Set<SubmissionEntity> findAllByUserId(String userId);
+    List<SubmissionEntity> findAllByUserId(String userId);
 
     Integer countByUserIdAndTaskId(String userId, String taskId);
 
     @Aggregation(pipeline = {
             "{ $match: { userId: ?0, taskId: ?1} }",
-            "{ $group: { _id: \"$status\", count: { $sum: 1 } } }",
-            "{ $project: { _id: 0, status: \"$_id\", count: 1 } }"
+            "{ $group: { _id: '$status', count: { $sum: 1 } } }",
+            "{ $project: { _id: 0, status: '$_id', count: 1 } }"
     })
     List<StatusWrapper> getTaskStatusStatistics(String userId, String taskId);
 

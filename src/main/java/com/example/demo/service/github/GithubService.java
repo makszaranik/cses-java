@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.io.ByteArrayInputStream;
-import java.net.http.HttpClient;
 import java.util.List;
 
 @Service
@@ -28,6 +27,7 @@ public class GithubService {
     private final FileUtilService fileUtilService;
     private final UserService userService;
     private final OAuth2AuthorizedClientService authorizedClientService;
+    private final RestClient restClient;
 
     public FileEntity downloadAndSaveRepoToZip(String repoName) {
         String repoDownloadUri = "https://api.github.com/repos/%s/%s/zipball/main";
@@ -46,21 +46,11 @@ public class GithubService {
         headers.setBearerAuth(accessToken);
         headers.set(HttpHeaders.ACCEPT, "application/zip");
 
-        RestClient restClient = RestClient.create();
         ResponseEntity<byte[]> response = restClient.get()
                 .uri(repoDownloadUriFormatted)
                 .headers(h -> h.addAll(headers))
                 .retrieve()
                 .toEntity(byte[].class);
-
-        if (response.getStatusCode().is3xxRedirection()) {
-            String redirectUri = response.getHeaders().getLocation().toString();
-            response = restClient.get()
-                    .uri(redirectUri)
-                    .headers(h -> h.addAll(headers))
-                    .retrieve()
-                    .toEntity(byte[].class);
-        }
 
         if(response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
             throw new ResourceNotFoundException("Resource not found");
@@ -92,7 +82,6 @@ public class GithubService {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
 
-        RestClient restClient = RestClient.create();
         ResponseEntity<RepoResponseDto[]> response = restClient.get()
                 .uri(reposUriFormatted)
                 .headers(header -> header.addAll(headers))

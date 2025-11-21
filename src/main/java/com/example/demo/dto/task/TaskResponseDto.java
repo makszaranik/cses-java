@@ -5,7 +5,7 @@ public record TaskResponseDto(
         String id,
         String title,
         String statement,
-        int memoryRestriction,
+        Long memoryRestriction,
         String solutionTemplateFileId,
         int testsPoints,
         int lintersPoints,

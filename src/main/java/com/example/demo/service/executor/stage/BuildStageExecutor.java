@@ -1,8 +1,10 @@
 package com.example.demo.service.executor.stage;
 
 import com.example.demo.model.submission.SubmissionEntity;
+import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
 import com.example.demo.service.submission.SubmissionService;
+import com.example.demo.service.task.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -14,11 +16,15 @@ public class BuildStageExecutor implements StageExecutor {
 
     private final DockerClientFacade dockerClientFacade;
     private final SubmissionService submissionService;
+    private final TaskService taskService;
 
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
 
         log.info("Build stage for submission {}.", submission.getId());
+        TaskEntity task = taskService.findTaskById(submission.getTaskId());
+        Long memoryRestriction = task.getMemoryRestriction();
+
         String downloadPath = "http://host.docker.internal:8080/files/download/%s";
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
 
@@ -31,6 +37,7 @@ public class BuildStageExecutor implements StageExecutor {
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJob(
                 "build_container",
+                memoryRestriction,
                 "/bin/bash", "-c", cmd
         );
 

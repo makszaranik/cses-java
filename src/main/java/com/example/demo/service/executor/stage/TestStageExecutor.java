@@ -35,6 +35,7 @@ public class TestStageExecutor implements StageExecutor {
         log.info("Test stage for submission {}.", submission.getId());
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         String testsFileId = task.getTestsFileId();
+        Long memoryRestriction = task.getMemoryRestriction();
 
         String downloadPath = "http://host.docker.internal:8080/files/download/%s";
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
@@ -56,8 +57,8 @@ public class TestStageExecutor implements StageExecutor {
                 "test_container",
                 hostReportsDir,
                 containerReportsDir,
-                "/bin/bash", "-c",
-                cmd
+                memoryRestriction,
+                "/bin/bash", "-c", cmd
         );
 
         Integer statusCode = jobResult.statusCode();
@@ -66,7 +67,7 @@ public class TestStageExecutor implements StageExecutor {
         Integer score = calculateScore(testsResult.passed(), testsResult.total(), task.getTestsPoints());
 
         submission.setLogs(logs);
-        submission.setScore(score);
+        submission.setScore(submission.getScore() + score);
 
         log.info("Status code is {}", statusCode);
         log.info("Score is {}", score);
