@@ -9,6 +9,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -27,10 +28,15 @@ public class LinterStageExecutor implements StageExecutor {
     private final DockerClientFacade dockerClientFacade;
     private final SubmissionService submissionService;
 
+    @Value("${spring.docker-client.scripts.linter}")
+    private String linterCommand;
+
+    @Value("${spring.docker-client.containers.linter}")
+    private String containerName;
 
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
-        log.info("Linter stage for submission {}.", submission.getId());
+        log.debug("Linter stage for submission {}.", submission.getId());
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         String lintersFileId = task.getLintersFileId();
         Long memoryRestriction = task.getMemoryRestriction();
@@ -42,17 +48,10 @@ public class LinterStageExecutor implements StageExecutor {
         String hostReportsDir = "/tmp/linter-results/" + submission.getId();
         String containerReportsDir = "/app/solution_dir";
 
-        String cmd = String.format("""
-                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
-                wget -O linter.zip %s && unzip linter.zip -d linter_dir &&
-                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
-                mv linter_dir/* $SOLUTION_DIR_NAME/src/main/resources &&
-                cd $SOLUTION_DIR_NAME && mvn pmd:check -q
-                """, solutionUri, linterUri
-        );
+        String cmd = String.format(linterCommand, solutionUri, linterUri);
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
-                "linter_container",
+                containerName,
                 hostReportsDir,
                 containerReportsDir,
                 memoryRestriction,

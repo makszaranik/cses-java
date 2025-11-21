@@ -9,6 +9,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -30,9 +31,15 @@ public class TestStageExecutor implements StageExecutor {
     private final DockerClientFacade dockerClientFacade;
     private final SubmissionService submissionService;
 
+    @Value("${spring.docker-client.scripts.test}")
+    private String testCommand;
+
+    @Value("${spring.docker-client.containers.test}")
+    private String containerName;
+
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
-        log.info("Test stage for submission {}.", submission.getId());
+        log.debug("Test stage for submission {}.", submission.getId());
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         String testsFileId = task.getTestsFileId();
         Long memoryRestriction = task.getMemoryRestriction();
@@ -44,17 +51,10 @@ public class TestStageExecutor implements StageExecutor {
         String hostReportsDir = "/tmp/test-results/" + submission.getId();
         String containerReportsDir = "/app/solution_dir";
 
-        String cmd = String.format("""
-                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
-                wget -O test.zip %s && unzip test.zip -d test_dir &&
-                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
-                mv test_dir/test/java/* $SOLUTION_DIR_NAME/src/test/java &&
-                cd $SOLUTION_DIR_NAME && mvn clean test -q
-                """, solutionUri, testUri
-        );
+        String cmd = String.format(testCommand, solutionUri, testUri);
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
-                "test_container",
+                containerName,
                 hostReportsDir,
                 containerReportsDir,
                 memoryRestriction,
@@ -69,8 +69,8 @@ public class TestStageExecutor implements StageExecutor {
         submission.setLogs(logs);
         submission.setScore(submission.getScore() + score);
 
-        log.info("Status code is {}", statusCode);
-        log.info("Score is {}", score);
+        log.debug("Status code is {}", statusCode);
+        log.debug("Score is {}", score);
 
         if (statusCode == 0) {
             submission.setStatus(SubmissionEntity.Status.ACCEPTED);

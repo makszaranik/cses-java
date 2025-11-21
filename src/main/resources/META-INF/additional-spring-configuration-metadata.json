@@ -1,0 +1,58 @@
+{
+  "properties": [
+    {
+      "name": "spring.docker-client.container.image-name",
+      "type": "java.lang.String",
+      "description": "Description for spring.docker-client.container.image-name."
+    },
+    {
+      "name": "spring.docker-client.container.host-name",
+      "type": "java.lang.String",
+      "description": "Description for spring.docker-client.container.host-name."
+    },
+    {
+      "name": "spring.docker-client.scripts.build",
+      "type": "java.lang.String",
+      "description": "Description for spring.docker-client.scripts.build."
+    },
+    {
+      "name": "spring.docker-client.scripts.test",
+      "type": "java.lang.String",
+      "description": "Description for spring.docker-client.scripts.test."
+    },
+    {
+      "name": "spring.docker-client.scripts.linter",
+      "type": "java.lang.String",
+      "description": "Description for spring.docker-client.scripts.linter."
+    },
+    {
+      "name": "spring.docker-client.container.linter-name",
+      "type": "java.lang.String",
+      "description": "Description for spring.docker-client.container.linter-name."
+    },
+    {
+      "name": "spring.docker-client.container.test-name",
+      "type": "java.lang.String",
+      "description": "Description for spring.docker-client.container.test-name."
+    },
+    {
+      "name": "spring.docker-client.container.build-name",
+      "type": "java.lang.String",
+      "description": "Description for spring.docker-client.container.build-name."
+    },
+    {
+      "name": "spring.docker-client.containers.build",
+      "type": "java.lang.String",
+      "description": "Description for spring.docker-client.containers.build."
+    },
+    {
+      "name": "spring.docker-client.containers.test",
+      "type": "java.lang.String",
+      "description": "Description for spring.docker-client.containers.test."
+    },
+    {
+      "name": "spring.docker-client.containers.linter",
+      "type": "java.lang.String",
+      "description": "Description for spring.docker-client.containers.linter."
+    }
+  ] }

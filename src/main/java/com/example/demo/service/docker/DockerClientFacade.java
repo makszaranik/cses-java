@@ -10,6 +10,7 @@ import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.Volume;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -22,8 +23,12 @@ import java.util.concurrent.TimeUnit;
 public class DockerClientFacade {
 
     private final DockerClient dockerClient;
-    private static final String CONTAINER_IMAGE_NAME = "java-maven-ci";
-    private static final String HOST_NAME = "demo_default";
+
+    @Value("${spring.docker-client.container.host-name}")
+    private String hostName;
+
+    @Value("${spring.docker-client.container.image-name}")
+    private String imageName;
 
     public DockerJobResult runJob(String containerName, Long memoryRestriction, String... args) {
         String containerId = null;
@@ -71,10 +76,10 @@ public class DockerClientFacade {
     }
 
     public String createAndRunContainer(String name, Long memoryRestriction, String... args) {
-        var container = dockerClient.createContainerCmd("java-maven-ci")
+        var container = dockerClient.createContainerCmd(imageName)
                 .withCmd(args)
                 .withHostConfig(HostConfig.newHostConfig()
-                        .withNetworkMode("demo_default")
+                        .withNetworkMode(hostName)
                         .withMemory(memoryRestriction * 1024L * 1024L)) //mb
                 .withTty(true)
                 .withName(name)
@@ -85,10 +90,10 @@ public class DockerClientFacade {
     }
 
     public String createAndRunContainerWithVolume(String containerName, String hostDir, String containerDir, Long memoryRestriction, String... args) {
-        CreateContainerResponse container = dockerClient.createContainerCmd("java-maven-ci")
+        CreateContainerResponse container = dockerClient.createContainerCmd(imageName)
                 .withCmd(args)
                 .withHostConfig(HostConfig.newHostConfig()
-                        .withNetworkMode("demo_default")
+                        .withNetworkMode(hostName)
                         .withBinds(new Bind(hostDir, new Volume(containerDir)))
                         .withMemory(memoryRestriction * 1024L * 1024L)) //mb
                 .withTty(true)

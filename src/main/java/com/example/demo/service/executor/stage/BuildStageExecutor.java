@@ -7,6 +7,7 @@ import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -18,25 +19,26 @@ public class BuildStageExecutor implements StageExecutor {
     private final SubmissionService submissionService;
     private final TaskService taskService;
 
+    @Value("${spring.docker-client.scripts.build}")
+    private String buildCommand;
+
+    @Value("${spring.docker-client.containers.build}")
+    private String containerName;
+
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
 
-        log.info("Build stage for submission {}.", submission.getId());
+        log.debug("Build stage for submission {}.", submission.getId());
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         Long memoryRestriction = task.getMemoryRestriction();
 
         String downloadPath = "http://host.docker.internal:8080/files/download/%s";
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
 
-        String cmd = String.format("""
-                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
-                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
-                cd $SOLUTION_DIR_NAME && mvn clean compile -q
-                """, solutionUri
-        );
+        String cmd = String.format(buildCommand, solutionUri);
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJob(
-                "build_container",
+                containerName,
                 memoryRestriction,
                 "/bin/bash", "-c", cmd
         );
