@@ -1,7 +1,7 @@
 package com.example.demo.controller;
 
 
-import com.example.demo.dto.repo.RepoResponseDto;
+import com.example.demo.dto.repository.GithubRepositoryResponseDto;
 import com.example.demo.dto.task.stats.UserStatsResponseDto;
 import com.example.demo.dto.user.UserResponseDto;
 import com.example.demo.model.user.UserEntity;
@@ -31,7 +31,7 @@ public class UserController {
 
     @GetMapping("github-repos")
     @PreAuthorize("isAuthenticated()")
-    public List<RepoResponseDto> getAllGithubRepos() {
+    public List<GithubRepositoryResponseDto> getAllGithubRepos() {
         String userId = userService.getCurrentUser().getId();
         return githubService.getAllUserReposNames(userId);
     }
