@@ -38,7 +38,7 @@ public class LinterStageExecutor implements StageExecutor {
         String lintersFileId = task.getLintersFileId();
         Long memoryRestriction = task.getMemoryRestriction();
 
-        String downloadPath = properties.downloadUriTemplate();
+        String downloadPath = properties.container().downloadUriTemplate();
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
         String linterUri = String.format(downloadPath, lintersFileId);
 

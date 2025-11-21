@@ -40,7 +40,7 @@ public class TestStageExecutor implements StageExecutor {
         String testsFileId = task.getTestsFileId();
         Long memoryRestriction = task.getMemoryRestriction();
 
-        String downloadPath = properties.downloadUriTemplate();
+        String downloadPath = properties.container().downloadUriTemplate();
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
         String testUri = String.format(downloadPath, testsFileId);
 

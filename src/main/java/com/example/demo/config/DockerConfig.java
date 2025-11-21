@@ -38,13 +38,13 @@ public class DockerConfig {
     public record DockerClientProperties(
             Container container,
             Containers containers,
-            Scripts scripts,
-            String downloadUriTemplate
+            Scripts scripts
     ) {
 
         public record Container(
                 String imageName,
-                String hostName
+                String hostName,
+                String downloadUriTemplate
         ) {}
 
         public record Containers(

@@ -28,7 +28,7 @@ public class BuildStageExecutor implements StageExecutor {
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         Long memoryRestriction = task.getMemoryRestriction();
 
-        String downloadPath = properties.downloadUriTemplate();
+        String downloadPath = properties.container().downloadUriTemplate();
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
 
         String cmd = String.format(properties.scripts().build(), solutionUri);
