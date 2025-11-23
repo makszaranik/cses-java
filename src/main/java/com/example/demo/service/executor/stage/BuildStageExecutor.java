@@ -8,7 +8,6 @@ import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -43,7 +42,7 @@ public class BuildStageExecutor implements StageExecutor {
         String logs = jobResult.logs();
         submission.setLogs(logs);
 
-        log.debug("Status code is {}", statusCode);
+        log.info("Status code is {}", statusCode);
 
         if (statusCode == 0) {
             submission.setStatus(SubmissionEntity.Status.COMPILATION_SUCCESS);
