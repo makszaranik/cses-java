@@ -106,7 +106,6 @@ public class TaskController {
     }
 
     @GetMapping("{id}")
-    @PreAuthorize("isAuthenticated()")
     public TaskResponseDto findTask(@PathVariable String id) {
         TaskEntity task = taskService.findTaskById(id);
         return taskMapper.toResponseDto(task);

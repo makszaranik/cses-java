@@ -27,7 +27,7 @@ public class UserController {
     @PostMapping("{userId}/grant-teacher")
     @PreAuthorize("hasRole('ADMIN')")
     public void grantTeacherRole(@PathVariable String userId) {
-        userService.grantRole(userId, UserEntity.UserRole.TEACHER);
+        userService.grantTeacherRole(userId);
     }
 
     @GetMapping("github-repos")

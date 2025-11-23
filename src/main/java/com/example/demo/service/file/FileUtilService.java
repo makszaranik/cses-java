@@ -60,11 +60,10 @@ public class FileUtilService {
     }
 
     public GridFsResource getFileById(String fileId) {
-        FileEntity file = fileRepository.findById(fileId)
-                .orElseThrow(() -> {
-                    String message = String.format("file with id %s not found", fileId);
-                    return new ResourceNotFoundException(message);
-                });
+        FileEntity file = fileRepository.findById(fileId).orElseThrow(() -> {
+            String message = String.format("file with id %s not found", fileId);
+            return new ResourceNotFoundException(message);
+        });
         String gridFsFileId = file.getGridFSFileId();
         GridFSFile gridFsFile = gridFsTemplate.findOne(Query.query(Criteria.where("_id").is(gridFsFileId)));
         return gridFsTemplate.getResource(gridFsFile);

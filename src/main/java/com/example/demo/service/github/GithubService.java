@@ -52,7 +52,7 @@ public class GithubService {
                 .retrieve()
                 .toEntity(byte[].class);
 
-        if(response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
+        if (response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
             throw new ResourceNotFoundException("Resource not found");
         }
 
@@ -86,8 +86,8 @@ public class GithubService {
                 .retrieve()
                 .toEntity(GithubRepositoryResponseDto[].class);
 
-        if(response.getBody() == null){
-            throw new ResourceNotFoundException("No repositories found");
+        if (response.getBody() == null) {
+            throw new ResourceNotFoundException("No repositories for user with id" + userId + "found");
         }
 
         return List.of(response.getBody());
