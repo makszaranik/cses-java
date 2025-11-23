@@ -4,6 +4,7 @@ import com.example.demo.config.DockerConfig;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
+import com.example.demo.service.docker.StatusCodeResolver;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
 import lombok.NonNull;
@@ -55,22 +56,28 @@ public class LinterStageExecutor implements StageExecutor {
         );
 
         Integer statusCode = jobResult.statusCode();
-        String logs = jobResult.logs();
         Integer pmdScore = isPmdPassed(hostReportsDir) ? task.getLintersPoints() : 0;
         submission.setScore(submission.getScore() + pmdScore);
-        submission.setLogs(logs);
+        submission.setLogs(jobResult.logs());
 
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", pmdScore);
 
-        if (statusCode == 0) {
-            submission.setStatus(SubmissionEntity.Status.LINTER_PASSED);
-            submissionService.save(submission);
+        StatusCodeResolver containerStatus = StatusCodeResolver.resolve(statusCode);
+        SubmissionEntity.Status submissionStatus = switch (containerStatus) {
+            case CONTAINER_SUCCESS -> SubmissionEntity.Status.LINTER_PASSED;
+            case CONTAINER_OUT_OF_MEMORY,
+                 CONTAINER_TIME_LIMIT,
+                 CONTAINER_FAILED ->  SubmissionEntity.Status.LINTER_FAILED;
+        };
+
+        submission.setStatus(submissionStatus);
+        submissionService.save(submission);
+
+        if(submissionStatus == SubmissionEntity.Status.LINTER_PASSED) {
             chain.doNext(submission, chain);
-        } else {
-            submission.setStatus(SubmissionEntity.Status.LINTER_FAILED);
-            submissionService.save(submission);
         }
+
     }
 
     @SneakyThrows

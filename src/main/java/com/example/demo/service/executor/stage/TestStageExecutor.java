@@ -4,6 +4,7 @@ import com.example.demo.config.DockerConfig;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
+import com.example.demo.service.docker.StatusCodeResolver;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
 import lombok.NonNull;
@@ -57,23 +58,28 @@ public class TestStageExecutor implements StageExecutor {
         );
 
         Integer statusCode = jobResult.statusCode();
-        String logs = jobResult.logs();
         TestsResult testsResult = getTestResult(hostReportsDir);
         Integer score = calculateScore(testsResult.passed(), testsResult.total(), task.getTestsPoints());
 
-        submission.setLogs(logs);
+        submission.setLogs(jobResult.logs());
         submission.setScore(submission.getScore() + score);
 
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", score);
 
-        if (statusCode == 0) {
-            submission.setStatus(SubmissionEntity.Status.ACCEPTED);
-            submissionService.save(submission);
+        StatusCodeResolver containerStatus = StatusCodeResolver.resolve(statusCode);
+        SubmissionEntity.Status submissionStatus = switch (containerStatus) {
+            case CONTAINER_SUCCESS -> SubmissionEntity.Status.ACCEPTED;
+            case CONTAINER_TIME_LIMIT -> SubmissionEntity.Status.TIME_LIMIT_EXCEEDED;
+            case CONTAINER_OUT_OF_MEMORY -> SubmissionEntity.Status.OUT_OF_MEMORY_ERROR;
+            case CONTAINER_FAILED -> SubmissionEntity.Status.WRONG_ANSWER;
+        };
+
+        submission.setStatus(submissionStatus);
+        submissionService.save(submission);
+
+        if(submissionStatus == SubmissionEntity.Status.ACCEPTED) {
             chain.doNext(submission, chain);
-        } else {
-            submission.setStatus(SubmissionEntity.Status.WRONG_ANSWER);
-            submissionService.save(submission);
         }
     }
 
@@ -106,7 +112,7 @@ public class TestStageExecutor implements StageExecutor {
         int errors = Integer.parseInt(parts[2].split(":")[1].trim());
         int skipped = Integer.parseInt(parts[3].split(":")[1].trim());
         int timeout = 0; //optional field
-        if(line.contains("timeout")){
+        if (line.contains("timeout")) {
             timeout = Integer.parseInt(parts[4].split(":")[1].trim());
         }
         int passedTests = totalTests - failures - errors - skipped - timeout;
@@ -124,5 +130,6 @@ public class TestStageExecutor implements StageExecutor {
             Integer skipped,
             Integer timeout,
             Integer passed
-    ) {}
+    ) {
+    }
 }
