@@ -27,6 +27,11 @@ public class TaskService {
         );
     }
 
+    public List<TaskEntity> findAllByOwnerId(String ownerId) {
+        return taskRepository.findAllByOwnerId(ownerId);
+    }
+
+
     public void removeTaskEntity(String id){
         TaskEntity taskToDelete = findTaskById(id);
         taskRepository.delete(taskToDelete);

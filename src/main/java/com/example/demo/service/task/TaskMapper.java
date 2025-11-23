@@ -9,31 +9,33 @@ import org.springframework.stereotype.Component;
 @Component
 public class TaskMapper {
 
-    public TaskEntity toEntity(TaskCreateRequestDto createDto, String ownerId) {
+    public TaskEntity toEntity(TaskCreateRequestDto dto, String ownerId) {
         return TaskEntity.builder()
-                .title(createDto.title())
-                .statement(createDto.statement())
-                .memoryRestriction(createDto.memoryRestriction())
-                .solutionTemplateFileId(createDto.solutionTemplateFileId())
-                .testsFileId(createDto.testsFileId())
-                .lintersFileId(createDto.lintersFileId())
-                .testsPoints(createDto.testsPoints())
-                .lintersPoints(createDto.lintersPoints())
+                .title(dto.title())
+                .statement(dto.statement())
+                .memoryRestriction(dto.memoryRestriction())
+                .solutionTemplateFileId(dto.solutionTemplateFileId())
+                .testsFileId(dto.testsFileId())
+                .lintersFileId(dto.lintersFileId())
+                .testsPoints(dto.testsPoints())
+                .lintersPoints(dto.lintersPoints())
+                .submissionsNumberLimit(dto.submissionsNumberLimit())
                 .ownerId(ownerId)
                 .build();
     }
 
-    public TaskEntity toEntity(TaskUpdateRequestDto createDto, String ownerId) {
+    public TaskEntity toEntity(TaskUpdateRequestDto dto, String ownerId) {
         return TaskEntity.builder()
-                .id(createDto.taskId())
-                .title(createDto.title())
-                .statement(createDto.statement())
-                .memoryRestriction(createDto.memoryRestriction())
-                .solutionTemplateFileId(createDto.solutionTemplateFileId())
-                .testsFileId(createDto.testsFileId())
-                .lintersFileId(createDto.lintersFileId())
-                .testsPoints(createDto.testsPoints())
-                .lintersPoints(createDto.lintersPoints())
+                .id(dto.taskId())
+                .title(dto.title())
+                .statement(dto.statement())
+                .memoryRestriction(dto.memoryRestriction())
+                .solutionTemplateFileId(dto.solutionTemplateFileId())
+                .testsFileId(dto.testsFileId())
+                .lintersFileId(dto.lintersFileId())
+                .testsPoints(dto.testsPoints())
+                .lintersPoints(dto.lintersPoints())
+                .submissionsNumberLimit(dto.submissionsNumberLimit())
                 .ownerId(ownerId)
                 .build();
     }
@@ -45,6 +47,8 @@ public class TaskMapper {
                 entity.getStatement(),
                 entity.getMemoryRestriction(),
                 entity.getSolutionTemplateFileId(),
+                entity.getTestsFileId(),
+                entity.getLintersFileId(),
                 entity.getTestsPoints(),
                 entity.getLintersPoints(),
                 entity.getSubmissionsNumberLimit(),

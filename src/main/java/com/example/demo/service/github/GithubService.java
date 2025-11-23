@@ -67,7 +67,7 @@ public class GithubService {
 
 
     public List<GithubRepositoryResponseDto> getAllUserReposNames(String userId) {
-        String reposUri = "https://api.github.com/users/%s/repos";
+        String reposUri = "https://api.github.com/user/repos";
 
         OAuth2AuthenticationToken authToken = (OAuth2AuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient(
@@ -77,13 +77,11 @@ public class GithubService {
 
         UserEntity user = userService.findUserById(userId);
         String accessToken = client.getAccessToken().getTokenValue();
-        String reposUriFormatted = String.format(reposUri, user.getUsername());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
-
         ResponseEntity<GithubRepositoryResponseDto[]> response = restClient.get()
-                .uri(reposUriFormatted)
+                .uri(reposUri)
                 .headers(header -> header.addAll(headers))
                 .retrieve()
                 .toEntity(GithubRepositoryResponseDto[].class);

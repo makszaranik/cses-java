@@ -50,20 +50,11 @@ public class SubmissionService {
         submissionRepository.save(submissionEntity);
     }
 
-    public UserStatsResponseDto calculateStatisticsForTask(String userId) {
-        List<String> taskIds = submissionRepository.findAllByUserId(userId)
-                .stream()
-                .map(SubmissionEntity::getTaskId)
-                .toList();
+    public TaskStatsResponseDto getStatisticsForTask(String userId, String taskId) {
+        List<SubmissionRepository.StatusWrapper> statuses =
+                submissionRepository.getTaskStatusStatistics(userId, taskId);
 
-        List<TaskStatsResponseDto> tasks = taskIds.stream()
-                .map(taskId -> {
-                    List<SubmissionRepository.StatusWrapper> statuses = submissionRepository.getTaskStatusStatistics(userId, taskId);
-                    return new TaskStatsResponseDto(taskId, statuses);
-                })
-                .toList();
-
-        return new UserStatsResponseDto(userId, tasks);
+        return new TaskStatsResponseDto(taskId, statuses);
     }
 
     public List<SubmissionEntity> getSubmissionsByUser(String userId) {

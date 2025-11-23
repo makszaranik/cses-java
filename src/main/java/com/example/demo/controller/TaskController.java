@@ -1,11 +1,13 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.submission.SubmissionResponseDto;
 import com.example.demo.dto.task.*;
 import com.example.demo.exceptions.ScoreExceededException;
 import com.example.demo.exceptions.SubmissionNotAllowedException;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.event.EventService;
+import com.example.demo.service.submission.SubmissionMapper;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskMapper;
 import com.example.demo.service.task.TaskService;
@@ -33,10 +35,11 @@ public class TaskController {
     private final SubmissionService submissionService;
     private final EventService eventService;
     private final UserService userService;
+    private final SubmissionMapper submissionMapper;
 
     @PostMapping("submit")
     @PreAuthorize("isAuthenticated()")
-    public SubmissionEntity submitTask(@RequestBody @Valid TaskSubmissionRequestDto submitDto) {
+    public SubmissionResponseDto submitTask(@RequestBody @Valid TaskSubmissionRequestDto submitDto) {
         TaskEntity task = taskService.findTaskById(submitDto.taskId());
         String userId = userService.getCurrentUser().getId();
         Integer submissionCount = submissionService.getNumberSubmissionsForTask(userId, submitDto.taskId());
@@ -45,7 +48,8 @@ public class TaskController {
             throw new SubmissionNotAllowedException("Number of submissions exceeded");
         }
 
-        return submissionService.createSubmission(submitDto);
+        SubmissionEntity submission = submissionService.createSubmission(submitDto);
+        return submissionMapper.toDto(submission);
     }
 
     @GetMapping("status")
@@ -59,7 +63,7 @@ public class TaskController {
 
     @PostMapping("create")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public String createTask(@RequestBody @Valid TaskCreateRequestDto createDto) {
         if(createDto.testsPoints() + createDto.lintersPoints() != 100){
             throw new ScoreExceededException("Score sum must be 100");
@@ -71,7 +75,7 @@ public class TaskController {
     }
 
     @DeleteMapping("delete")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public void deleteTask(@RequestBody @Valid TaskDeletionRequestDto deleteDto) {
         TaskEntity task = taskService.findTaskById(deleteDto.taskId());
         String ownerId = userService.getCurrentUser().getId();
@@ -84,7 +88,7 @@ public class TaskController {
     }
 
     @PutMapping("update")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public TaskResponseDto updateTask(@RequestBody @Valid TaskUpdateRequestDto updateDto) {
         TaskEntity task = taskService.findTaskById(updateDto.taskId());
         String ownerId = userService.getCurrentUser().getId();
@@ -102,9 +106,20 @@ public class TaskController {
     }
 
     @GetMapping("{id}")
+    @PreAuthorize("isAuthenticated()")
     public TaskResponseDto findTask(@PathVariable String id) {
         TaskEntity task = taskService.findTaskById(id);
         return taskMapper.toResponseDto(task);
+    }
+
+    @GetMapping("owned")
+    @PreAuthorize("isAuthenticated()")
+    public List<TaskResponseDto> findMyTasks() {
+        String userId = userService.getCurrentUser().getId();
+        List<TaskEntity> tasks = taskService.findAllByOwnerId(userId);
+        return tasks.stream()
+                .map(taskMapper::toResponseDto)
+                .toList();
     }
 
     @GetMapping

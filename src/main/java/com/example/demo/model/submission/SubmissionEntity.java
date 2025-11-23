@@ -41,7 +41,8 @@ public class SubmissionEntity {
         COMPILATION_ERROR,
         WRONG_ANSWER,
         ACCEPTED,
-        TIMELIMIT_EXCEEDED,
+        TIME_LIMIT_EXCEEDED,
+        OUT_OF_MEMORY_ERROR,
         LINTER_PASSED,
         LINTER_FAILED,
     }
