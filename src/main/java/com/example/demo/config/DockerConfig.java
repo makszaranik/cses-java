@@ -10,6 +10,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import com.github.dockerjava.okhttp.OkDockerHttpClient;
 
+import java.time.Duration;
+
 @Configuration
 @EnableConfigurationProperties(DockerConfig.DockerClientProperties.class)
 public class DockerConfig {
@@ -44,7 +46,8 @@ public class DockerConfig {
         public record Container(
                 String imageName,
                 String hostName,
-                String downloadUriTemplate
+                String downloadUriTemplate,
+                Duration timeout
         ) {}
 
         public record Containers(

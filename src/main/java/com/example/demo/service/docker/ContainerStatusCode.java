@@ -1,12 +1,11 @@
 package com.example.demo.service.docker;
 
 import lombok.Getter;
-import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
 
 import java.util.Arrays;
 
 @Getter
-public enum StatusCodeResolver {
+public enum ContainerStatusCode {
 
     CONTAINER_SUCCESS(0),
     CONTAINER_TIME_LIMIT(124),
@@ -15,12 +14,12 @@ public enum StatusCodeResolver {
 
     private final int statusCode;
 
-    StatusCodeResolver(Integer statusCode) {
+    ContainerStatusCode(Integer statusCode) {
         this.statusCode = statusCode;
     }
 
-    public static StatusCodeResolver resolve(Integer statusCode) {
-        return Arrays.stream(StatusCodeResolver.values())
+    public static ContainerStatusCode resolve(Integer statusCode) {
+        return Arrays.stream(ContainerStatusCode.values())
                 .filter(v -> v.getStatusCode() == statusCode)
                 .findFirst()
                 .orElse(CONTAINER_FAILED);

@@ -4,7 +4,7 @@ import com.example.demo.config.DockerConfig;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
-import com.example.demo.service.docker.StatusCodeResolver;
+import com.example.demo.service.docker.ContainerStatusCode;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
 import lombok.NonNull;
@@ -67,7 +67,7 @@ public class TestStageExecutor implements StageExecutor {
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", score);
 
-        StatusCodeResolver containerStatus = StatusCodeResolver.resolve(statusCode);
+        ContainerStatusCode containerStatus = ContainerStatusCode.resolve(statusCode);
         SubmissionEntity.Status submissionStatus = switch (containerStatus) {
             case CONTAINER_SUCCESS -> SubmissionEntity.Status.ACCEPTED;
             case CONTAINER_TIME_LIMIT -> SubmissionEntity.Status.TIME_LIMIT_EXCEEDED;
