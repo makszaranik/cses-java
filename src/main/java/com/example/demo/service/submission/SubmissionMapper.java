@@ -14,7 +14,7 @@ public class SubmissionMapper {
                 submission.getUserId(),
                 submission.getSourceCodeFileId(),
                 submission.getLogs(),
-                submission.getStatus() != null ? submission.getStatus().name() : null,
+                submission.getStatus(),
                 submission.getScore(),
                 submission.getCreatedAt()
         );

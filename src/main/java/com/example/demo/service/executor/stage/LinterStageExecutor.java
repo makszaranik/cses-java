@@ -58,7 +58,7 @@ public class LinterStageExecutor implements StageExecutor {
         Integer statusCode = jobResult.statusCode();
         Integer pmdScore = isPmdPassed(hostReportsDir) ? task.getLintersPoints() : 0;
         submission.setScore(submission.getScore() + pmdScore);
-        submission.setLogs(jobResult.logs());
+        submission.getLogs().put(Stages.LINTER, jobResult.logs());
 
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", pmdScore);
@@ -87,6 +87,7 @@ public class LinterStageExecutor implements StageExecutor {
             public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
                 if (file.getFileName().toString().equals("pmd.xml")) {
                     result.set(Files.readString(file));
+                    log.info(result.toString());
                     return FileVisitResult.TERMINATE;
                 }
                 return FileVisitResult.CONTINUE;
@@ -94,5 +95,4 @@ public class LinterStageExecutor implements StageExecutor {
         });
         return !result.get().contains("<violation");
     }
-
 }

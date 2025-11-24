@@ -11,6 +11,8 @@ import com.example.demo.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 @Service
@@ -26,7 +28,7 @@ public class SubmissionService {
                 .userId(userService.getCurrentUser().getId())
                 .sourceCodeFileId(submitDto.sourceCodeFileId())
                 .status(SubmissionEntity.Status.SUBMITTED)
-                .logs("")
+                .logs(new HashMap<>())
                 .score(0)
                 .build();
 
