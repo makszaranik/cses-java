@@ -34,7 +34,7 @@ public class UnusedFileRemover {
                 .filter(file -> !usedFileIds.contains(file.getId()))
                 .toList();
 
-        log.info("unused files to remove: {}", unusedFiles.size());
+        log.info("unused files to remove: {}", unusedFiles.stream().map(FileEntity::getId).toList());
 
         unusedFiles.stream()
                 .filter(file -> Duration.between(file.getCreatedAt(), LocalDateTime.now()).toMinutes() >= 5)
