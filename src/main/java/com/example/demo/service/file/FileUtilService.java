@@ -12,9 +12,10 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -59,7 +60,7 @@ public class FileUtilService {
         return fileRepository.save(fileEntity);
     }
 
-    public GridFsResource getFileById(String fileId) {
+    public GridFsResource findFileById(String fileId) {
         FileEntity file = fileRepository.findById(fileId).orElseThrow(() -> {
             String message = String.format("file with id %s not found", fileId);
             return new ResourceNotFoundException(message);
@@ -67,5 +68,14 @@ public class FileUtilService {
         String gridFsFileId = file.getGridFSFileId();
         GridFSFile gridFsFile = gridFsTemplate.findOne(Query.query(Criteria.where("_id").is(gridFsFileId)));
         return gridFsTemplate.getResource(gridFsFile);
+    }
+
+    List<FileEntity> findAllFiles() {
+        return fileRepository.findAll();
+    }
+
+    public void removeFile(FileEntity file) {
+        gridFsTemplate.delete(Query.query(Criteria.where("_id").is(file.getGridFSFileId())));
+        fileRepository.deleteById(file.getId());
     }
 }
