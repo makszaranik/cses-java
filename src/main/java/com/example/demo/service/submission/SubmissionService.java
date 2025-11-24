@@ -41,6 +41,10 @@ public class SubmissionService {
         return submissionRepository.findAllByStatus(SubmissionEntity.Status.SUBMITTED);
     }
 
+    public List<SubmissionEntity> findAllSubmissions() {
+        return submissionRepository.findAll();
+    }
+
     public SubmissionEntity findSubmissionById(String id) {
         return submissionRepository.findSubmissionEntityById(id)
                 .orElseThrow(() -> new SubmissionNotFoundException(id));

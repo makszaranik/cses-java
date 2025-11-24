@@ -34,7 +34,7 @@ public class UnusedFileRemover {
                 .filter(file -> !usedFileIds.contains(file.getId()))
                 .toList();
 
-        log.info("unused files to remove: {}", unusedFiles.stream().map(FileEntity::getId).toList());
+        log.info("unused fileIds to remove: {}", unusedFiles.stream().map(FileEntity::getId).toList());
 
         unusedFiles.stream()
                 .filter(file -> Duration.between(file.getCreatedAt(), LocalDateTime.now()).toMinutes() >= 5)
@@ -42,8 +42,8 @@ public class UnusedFileRemover {
     }
 
     private Set<String> getAllFileUsages() {
-        List<SubmissionEntity> submissions = submissionService.getAllSubmitted();
-        List<TaskEntity> tasks = taskService.findAll();
+        List<SubmissionEntity> submissions = submissionService.findAllSubmissions();
+        List<TaskEntity> tasks = taskService.findAllTasks();
         Set<String> usedFileIds = new HashSet<>();
 
         //usages in tasks

@@ -17,7 +17,7 @@ public class TaskService {
         return taskRepository.save(task).getId();
     }
 
-    public List<TaskEntity> findAll(){
+    public List<TaskEntity> findAllTasks(){
         return taskRepository.findAll();
     }
 

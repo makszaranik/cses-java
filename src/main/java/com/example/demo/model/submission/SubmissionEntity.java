@@ -37,6 +37,7 @@ public class SubmissionEntity {
 
     public enum Status {
         SUBMITTED,
+        COMPILING,
         COMPILATION_SUCCESS,
         COMPILATION_ERROR,
         WRONG_ANSWER,

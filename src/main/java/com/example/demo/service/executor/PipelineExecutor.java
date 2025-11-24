@@ -17,12 +17,10 @@ public class PipelineExecutor {
     @Scheduled(fixedRate = 5000)
     void execute() {
         submissionService.getAllSubmitted().forEach(submitted -> {
-            if (submitted.getStatus() == SubmissionEntity.Status.SUBMITTED) {
-                SubmissionEntity submission = submissionService.findSubmissionById(submitted.getId());
-                if (submission.getStatus() == SubmissionEntity.Status.SUBMITTED) {
-                    chain.startChain(submission);
-                }
-            }
+            SubmissionEntity submission = submissionService.findSubmissionById(submitted.getId());
+            submission.setStatus(SubmissionEntity.Status.COMPILING);
+            submissionService.save(submission);
+            chain.startChain(submission);
         });
     }
 }
