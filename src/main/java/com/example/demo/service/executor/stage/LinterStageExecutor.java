@@ -74,9 +74,7 @@ public class LinterStageExecutor implements StageExecutor {
         submission.setStatus(submissionStatus);
         submissionService.save(submission);
 
-        if(submissionStatus == SubmissionEntity.Status.LINTER_PASSED) {
-            chain.doNext(submission, chain);
-        }
+        chain.doNext(submission, chain);
 
     }
 

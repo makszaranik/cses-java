@@ -123,7 +123,7 @@ public class TaskController {
 
     @GetMapping
     public List<TaskResponseDto> findAllTasks() {
-        List<TaskEntity> tasks = taskService.findAll();
+        List<TaskEntity> tasks = taskService.findAllTasks();
         return tasks.stream()
                 .map(taskMapper::toResponseDto)
                 .toList();
