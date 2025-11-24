@@ -56,9 +56,10 @@ public class LinterStageExecutor implements StageExecutor {
         );
 
         Integer statusCode = jobResult.statusCode();
-        Integer pmdScore = isPmdPassed(hostReportsDir) ? task.getLintersPoints() : 0;
+        String pmdReport = getPmdReport(hostReportsDir);
+        Integer pmdScore = isPmdPassed(pmdReport) ? task.getLintersPoints() : 0;
         submission.setScore(submission.getScore() + pmdScore);
-        submission.getLogs().put(Stages.LINTER, jobResult.logs());
+        submission.getLogs().put(Stages.LINTER, pmdReport);
 
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", pmdScore);
@@ -79,7 +80,12 @@ public class LinterStageExecutor implements StageExecutor {
     }
 
     @SneakyThrows
-    public boolean isPmdPassed(String pathToDir) {
+    public boolean isPmdPassed(String pmdReport) {
+        return !pmdReport.contains("<violation");
+    }
+
+    @SneakyThrows
+    public String getPmdReport(String pathToDir) {
         AtomicReference<String> result = new AtomicReference<>();
         Files.walkFileTree(Path.of(pathToDir), new SimpleFileVisitor<>() {
             @NonNull
@@ -93,6 +99,6 @@ public class LinterStageExecutor implements StageExecutor {
                 return FileVisitResult.CONTINUE;
             }
         });
-        return !result.get().contains("<violation");
+        return result.get();
     }
 }
