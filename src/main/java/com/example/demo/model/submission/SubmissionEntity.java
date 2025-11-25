@@ -26,7 +26,7 @@ public class SubmissionEntity {
     private String taskId;
     private String userId;
     private String sourceCodeFileId; //user uploaded sourceCodeId
-    private Map<StageExecutor.Stages, String> logs;
+    private Map<LogType, String> logs;
     private Status status;
     private Integer score;
 
@@ -47,5 +47,11 @@ public class SubmissionEntity {
         OUT_OF_MEMORY_ERROR,
         LINTER_PASSED,
         LINTER_FAILED,
+    }
+
+    public enum LogType {
+        BUILD,
+        TEST,
+        LINTER
     }
 }

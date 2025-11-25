@@ -61,7 +61,7 @@ public class TestStageExecutor implements StageExecutor {
         TestsResult testsResult = getTestResult(hostReportsDir);
         Integer score = calculateScore(testsResult.passed(), testsResult.total(), task.getTestsPoints());
 
-        submission.getLogs().put(Stages.TEST, jobResult.logs());
+        submission.getLogs().put(SubmissionEntity.LogType.TEST, jobResult.logs());
         submission.setScore(submission.getScore() + score);
 
         log.debug("Status code is {}", statusCode);

@@ -59,7 +59,7 @@ public class LinterStageExecutor implements StageExecutor {
         String pmdReport = getPmdReport(hostReportsDir);
         Integer pmdScore = isPmdPassed(pmdReport) ? task.getLintersPoints() : 0;
         submission.setScore(submission.getScore() + pmdScore);
-        submission.getLogs().put(Stages.LINTER, pmdReport);
+        submission.getLogs().put(SubmissionEntity.LogType.LINTER, pmdReport);
 
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", pmdScore);

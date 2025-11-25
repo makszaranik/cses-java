@@ -11,7 +11,7 @@ public record SubmissionResponseDto(
         String taskId,
         String userId,
         String sourceCodeFileId,
-        Map<StageExecutor.Stages, String> logs,
+        Map<SubmissionEntity.LogType, String> logs,
         SubmissionEntity.Status status,
         Integer score,
         LocalDateTime createdAt

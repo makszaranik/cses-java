@@ -33,28 +33,4 @@ public class MongoConfig {
          return new DefaultMessageListenerContainer(mongoTemplate);
     }
 
-    @Bean
-    public MongoCustomConversions mongoCustomConversions() {
-        return new MongoCustomConversions(
-                List.of(new StageEnumToStringConverter(),
-                        new StringToStageEnumConverter()
-                )
-        );
-    }
-
-    @WritingConverter
-    static class StageEnumToStringConverter implements Converter<StageExecutor.Stages, String> {
-        @Override
-        public String convert(StageExecutor.Stages source) {
-            return source.name();
-        }
-    }
-
-    @ReadingConverter
-    static class StringToStageEnumConverter implements Converter<String, StageExecutor.Stages> {
-        @Override
-        public StageExecutor.Stages convert(@NonNull String source) {
-            return StageExecutor.Stages.valueOf(source.toUpperCase());
-        }
-    }
 }

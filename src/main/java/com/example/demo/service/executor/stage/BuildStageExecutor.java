@@ -42,7 +42,7 @@ public class BuildStageExecutor implements StageExecutor {
         );
 
         Integer statusCode = jobResult.statusCode();
-        submission.getLogs().put(Stages.BUILD, jobResult.logs());
+        submission.getLogs().put(SubmissionEntity.LogType.BUILD, jobResult.logs());
 
         log.debug("Status code is {}", statusCode);
         ContainerStatusCode containerStatus = ContainerStatusCode.resolve(statusCode);
