@@ -1,7 +1,8 @@
 package com.example.demo.controller;
 
 
-import com.example.demo.dto.repo.RepoResponseDto;
+import com.example.demo.dto.repository.GithubRepositoryResponseDto;
+import com.example.demo.dto.task.stats.TaskStatsResponseDto;
 import com.example.demo.dto.task.stats.UserStatsResponseDto;
 import com.example.demo.dto.user.UserResponseDto;
 import com.example.demo.model.user.UserEntity;
@@ -24,27 +25,28 @@ public class UserController {
     private final SubmissionService submissionService;
 
     @PostMapping("{userId}/grant-teacher")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public void grantTeacherRole(@PathVariable String userId) {
-        userService.grantRole(userId, UserEntity.UserRole.TEACHER);
+        userService.grantTeacherRole(userId);
     }
 
     @GetMapping("github-repos")
     @PreAuthorize("isAuthenticated()")
-    public List<RepoResponseDto> getAllGithubRepos() {
+    public List<GithubRepositoryResponseDto> getAllGithubRepos() {
         String userId = userService.getCurrentUser().getId();
         return githubService.getAllUserReposNames(userId);
     }
 
-    @GetMapping("statistics")
+    @GetMapping("statistics/{taskId}")
     @PreAuthorize("isAuthenticated()")
-    public UserStatsResponseDto getUserStats() {
+    public TaskStatsResponseDto getStats(@PathVariable String taskId) {
         String userId = userService.getCurrentUser().getId();
-        return submissionService.calculateStatisticsForTask(userId);
+        return submissionService.getStatisticsForTask(userId, taskId);
     }
 
+
     @GetMapping
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<UserResponseDto> getAllUsers() {
         return userService.findAllUsers().stream()
                 .map(user -> new UserResponseDto(user.getId(), user.getUsername(), user.getRole()))

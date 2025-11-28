@@ -47,4 +47,12 @@ public class GlobalExceptionHandler {
         problemDetail.setDetail("User with id " + e.getMessage() + " not found");
         return problemDetail;
     }
+
+    @ExceptionHandler(RoleChangeNotAllowedException.class)
+    public ProblemDetail handleRoleChangeNotAllowedException(RoleChangeNotAllowedException e) {
+        ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problemDetail.setTitle("Role Change Not Allowed");
+        problemDetail.setDetail(e.getMessage());
+        return problemDetail;
+    }
 }

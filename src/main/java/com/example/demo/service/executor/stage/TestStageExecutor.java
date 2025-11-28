@@ -1,8 +1,10 @@
 package com.example.demo.service.executor.stage;
 
+import com.example.demo.config.DockerConfig;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
+import com.example.demo.service.docker.ContainerStatusCode;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
 import lombok.NonNull;
@@ -11,14 +13,19 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import javax.swing.text.html.Option;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
@@ -29,32 +36,28 @@ public class TestStageExecutor implements StageExecutor {
     private final TaskService taskService;
     private final DockerClientFacade dockerClientFacade;
     private final SubmissionService submissionService;
+    private final DockerConfig.DockerClientProperties properties;
 
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
-        log.info("Test stage for submission {}.", submission.getId());
+        log.debug("Test stage for submission {}.", submission.getId());
+
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         String testsFileId = task.getTestsFileId();
         Long memoryRestriction = task.getMemoryRestriction();
 
-        String downloadPath = "http://host.docker.internal:8080/files/download/%s";
+        String downloadPath = properties.container().downloadUriTemplate();
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
         String testUri = String.format(downloadPath, testsFileId);
 
-        String hostReportsDir = "/tmp/test-results/" + submission.getId();
-        String containerReportsDir = "/app/solution_dir";
+        DockerConfig.DockerClientProperties.Path path = properties.stages().test().path();
+        String hostReportsDir = path.host() + submission.getId();
+        String containerReportsDir = path.container();
 
-        String cmd = String.format("""
-                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
-                wget -O test.zip %s && unzip test.zip -d test_dir &&
-                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
-                mv test_dir/test/java/* $SOLUTION_DIR_NAME/src/test/java &&
-                cd $SOLUTION_DIR_NAME && mvn clean test -q
-                """, solutionUri, testUri
-        );
+        String cmd = String.format(properties.stages().test().script(), solutionUri, testUri);
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
-                "test_container",
+                properties.stages().test().containerName(),
                 hostReportsDir,
                 containerReportsDir,
                 memoryRestriction,
@@ -62,31 +65,51 @@ public class TestStageExecutor implements StageExecutor {
         );
 
         Integer statusCode = jobResult.statusCode();
-        String logs = jobResult.logs();
-        TestsResult testsResult = getTestResult(hostReportsDir);
-        Integer score = calculateScore(testsResult.passed(), testsResult.total(), task.getTestsPoints());
+        Optional<TestsResult> testsResult = getTestResult(hostReportsDir);
 
-        submission.setLogs(logs);
+        if (testsResult.isEmpty()) {
+            log.error("test report for submission {} not found.", submission.getId());
+            submission.setStatus(SubmissionEntity.Status.JUDGEMENT_FAILED);
+            submission.getLogs().put(SubmissionEntity.LogType.TEST, "Test report generation failed.");
+            submissionService.save(submission);
+            return;
+        }
+
+        int score = calculateScore(testsResult.get().passed(), testsResult.get().total(), task.getTestsPoints());
+
+        submission.getLogs().put(SubmissionEntity.LogType.TEST, jobResult.logs());
         submission.setScore(submission.getScore() + score);
 
-        log.info("Status code is {}", statusCode);
-        log.info("Score is {}", score);
+        log.debug("Status code is {}", statusCode);
+        log.debug("Score is {}", score);
 
-        if (statusCode == 0) {
-            submission.setStatus(SubmissionEntity.Status.ACCEPTED);
-            submissionService.save(submission);
+        ContainerStatusCode containerStatus = ContainerStatusCode.resolve(statusCode);
+        SubmissionEntity.Status submissionStatus = switch (containerStatus) {
+            case CONTAINER_SUCCESS -> SubmissionEntity.Status.ACCEPTED;
+            case CONTAINER_TIME_LIMIT -> SubmissionEntity.Status.TIME_LIMIT_EXCEEDED;
+            case CONTAINER_OUT_OF_MEMORY -> SubmissionEntity.Status.OUT_OF_MEMORY_ERROR;
+            case CONTAINER_FAILED -> SubmissionEntity.Status.WRONG_ANSWER;
+        };
+
+        submission.setStatus(submissionStatus);
+        submissionService.save(submission);
+
+        if (submissionStatus == SubmissionEntity.Status.ACCEPTED) {
             chain.doNext(submission, chain);
-        } else {
-            submission.setStatus(SubmissionEntity.Status.WRONG_ANSWER);
-            submissionService.save(submission);
         }
     }
 
     @SneakyThrows
-    private TestsResult getTestResult(String pathToFile) {
-        Path path = new File(pathToFile).toPath();
-        AtomicReference<TestsResult> result = new AtomicReference<>();
+    private Optional<TestsResult> getTestResult(String pathToDir) {
+        Path path = new File(pathToDir).toPath();
+
+        if (!Files.exists(path)) {   //empty if report doesnt exists
+            return Optional.empty();
+        }
+
+        List<String> report = new ArrayList<>();
         Files.walkFileTree(path, new SimpleFileVisitor<>() {
+            @NonNull
             @Override
             public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
                 String fileName = file.getFileName().toString();
@@ -94,31 +117,31 @@ public class TestStageExecutor implements StageExecutor {
                     String content = Files.readString(file);
                     Arrays.stream(content.split("\n"))
                             .filter(line -> line.contains("Tests run:"))
-                            .findFirst()
-                            .ifPresent(line -> result.set(getTestResultParams(line)));
+                            .findFirst().ifPresent(report::add);
                 }
-                return FileVisitResult.CONTINUE;
+                return report.isEmpty() ? FileVisitResult.CONTINUE : FileVisitResult.TERMINATE;
             }
         });
-        return result.get();
+        return report.isEmpty() ? Optional.empty() : Optional.of(getTestResultParams(report.getFirst()));
     }
 
     private TestsResult getTestResultParams(String line) {
         String[] parts = line.split(", ");
-        int totalTests = Integer.parseInt(parts[0].split(":")[1].trim());
-        int failures = Integer.parseInt(parts[1].split(":")[1].trim());
-        int errors = Integer.parseInt(parts[2].split(":")[1].trim());
-        int skipped = Integer.parseInt(parts[3].split(":")[1].trim());
-        int timeout = 0; //optional field
-        if(line.contains("timeout")){
-            timeout = Integer.parseInt(parts[4].split(":")[1].trim());
-        }
+        int totalTests = getValueFromPart(parts[0]);
+        int failures = getValueFromPart(parts[1]);
+        int errors = getValueFromPart(parts[2]);
+        int skipped = getValueFromPart(parts[3]);
+        int timeout = line.contains("timeout") ? getValueFromPart(parts[4]) : 0;
         int passedTests = totalTests - failures - errors - skipped - timeout;
         return new TestsResult(totalTests, failures, errors, skipped, timeout, passedTests);
     }
 
+    private int getValueFromPart(String part) {
+        return Integer.parseInt(part.split(":")[1].trim());
+    }
+
     private Integer calculateScore(int passed, int total, int points) {
-        return passed == 0 ? 0 : (passed / total) * points;
+        return passed == 0 ? 0 : (passed * points) / total;
     }
 
     private record TestsResult(
@@ -128,5 +151,6 @@ public class TestStageExecutor implements StageExecutor {
             Integer skipped,
             Integer timeout,
             Integer passed
-    ) {}
+    ) {
+    }
 }

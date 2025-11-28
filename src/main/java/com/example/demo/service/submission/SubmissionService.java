@@ -11,6 +11,8 @@ import com.example.demo.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 @Service
@@ -26,7 +28,7 @@ public class SubmissionService {
                 .userId(userService.getCurrentUser().getId())
                 .sourceCodeFileId(submitDto.sourceCodeFileId())
                 .status(SubmissionEntity.Status.SUBMITTED)
-                .logs("")
+                .logs(new HashMap<>())
                 .score(0)
                 .build();
 
@@ -41,6 +43,10 @@ public class SubmissionService {
         return submissionRepository.findAllByStatus(SubmissionEntity.Status.SUBMITTED);
     }
 
+    public List<SubmissionEntity> findAllSubmissions() {
+        return submissionRepository.findAll();
+    }
+
     public SubmissionEntity findSubmissionById(String id) {
         return submissionRepository.findSubmissionEntityById(id)
                 .orElseThrow(() -> new SubmissionNotFoundException(id));
@@ -50,20 +56,11 @@ public class SubmissionService {
         submissionRepository.save(submissionEntity);
     }
 
-    public UserStatsResponseDto calculateStatisticsForTask(String userId) {
-        List<String> taskIds = submissionRepository.findAllByUserId(userId)
-                .stream()
-                .map(SubmissionEntity::getTaskId)
-                .toList();
+    public TaskStatsResponseDto getStatisticsForTask(String userId, String taskId) {
+        List<SubmissionRepository.StatusWrapper> statuses =
+                submissionRepository.getTaskStatusStatistics(userId, taskId);
 
-        List<TaskStatsResponseDto> tasks = taskIds.stream()
-                .map(taskId -> {
-                    List<SubmissionRepository.StatusWrapper> statuses = submissionRepository.getTaskStatusStatistics(userId, taskId);
-                    return new TaskStatsResponseDto(taskId, statuses);
-                })
-                .toList();
-
-        return new UserStatsResponseDto(userId, tasks);
+        return new TaskStatsResponseDto(taskId, statuses);
     }
 
     public List<SubmissionEntity> getSubmissionsByUser(String userId) {

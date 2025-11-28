@@ -1,8 +1,10 @@
 package com.example.demo.service.executor.stage;
 
+import com.example.demo.config.DockerConfig;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
+import com.example.demo.service.docker.ContainerStatusCode;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
 import lombok.NonNull;
@@ -10,13 +12,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Component("linter")
@@ -26,33 +29,28 @@ public class LinterStageExecutor implements StageExecutor {
     private final TaskService taskService;
     private final DockerClientFacade dockerClientFacade;
     private final SubmissionService submissionService;
-
+    private final DockerConfig.DockerClientProperties properties;
 
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
-        log.info("Linter stage for submission {}.", submission.getId());
+        log.debug("Linter stage for submission {}.", submission.getId());
+
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         String lintersFileId = task.getLintersFileId();
         Long memoryRestriction = task.getMemoryRestriction();
 
-        String downloadPath = "http://host.docker.internal:8080/files/download/%s";
+        String downloadPath = properties.container().downloadUriTemplate();
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
         String linterUri = String.format(downloadPath, lintersFileId);
 
-        String hostReportsDir = "/tmp/linter-results/" + submission.getId();
-        String containerReportsDir = "/app/solution_dir";
+        DockerConfig.DockerClientProperties.Path path = properties.stages().linter().path();
+        String hostReportsDir = path.host() + submission.getId();
+        String containerReportsDir = path.container();
 
-        String cmd = String.format("""
-                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
-                wget -O linter.zip %s && unzip linter.zip -d linter_dir &&
-                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
-                mv linter_dir/* $SOLUTION_DIR_NAME/src/main/resources &&
-                cd $SOLUTION_DIR_NAME && mvn pmd:check -q
-                """, solutionUri, linterUri
-        );
+        String cmd = String.format(properties.stages().linter().script(), solutionUri, linterUri);
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
-                "linter_container",
+                properties.stages().linter().containerName(),
                 hostReportsDir,
                 containerReportsDir,
                 memoryRestriction,
@@ -60,38 +58,62 @@ public class LinterStageExecutor implements StageExecutor {
         );
 
         Integer statusCode = jobResult.statusCode();
-        String logs = jobResult.logs();
-        Integer pmdScore = isPmdPassed(hostReportsDir) ? task.getLintersPoints() : 0;
+        Optional<String> pmdReport = getPmdReport(hostReportsDir);
+
+        if(pmdReport.isEmpty()) {
+            log.error("pmd report for submission {} not found.", submission.getId());
+            submission.setStatus(SubmissionEntity.Status.JUDGEMENT_FAILED);
+            submission.getLogs().put(SubmissionEntity.LogType.LINTER, "Linter report generation failed.");
+            submissionService.save(submission);
+            return;
+        }
+
+        int pmdScore = isPmdPassed(pmdReport.get()) ? task.getLintersPoints() : 0;
         submission.setScore(submission.getScore() + pmdScore);
-        submission.setLogs(logs);
+        submission.getLogs().put(SubmissionEntity.LogType.LINTER, pmdReport.get());
 
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", pmdScore);
 
-        if (statusCode == 0) {
-            submission.setStatus(SubmissionEntity.Status.LINTER_PASSED);
-            submissionService.save(submission);
-            chain.doNext(submission, chain);
-        } else {
-            submission.setStatus(SubmissionEntity.Status.LINTER_FAILED);
-            submissionService.save(submission);
-        }
+        ContainerStatusCode containerStatus = ContainerStatusCode.resolve(statusCode);
+        SubmissionEntity.Status submissionStatus = switch (containerStatus) {
+            case CONTAINER_SUCCESS -> SubmissionEntity.Status.LINTER_PASSED;
+            case CONTAINER_OUT_OF_MEMORY -> SubmissionEntity.Status.OUT_OF_MEMORY_ERROR;
+            case CONTAINER_TIME_LIMIT -> SubmissionEntity.Status.TIME_LIMIT_EXCEEDED;
+            case CONTAINER_FAILED -> SubmissionEntity.Status.LINTER_FAILED;
+        };
+
+        submission.setStatus(submissionStatus);
+        submissionService.save(submission);
+
+        chain.doNext(submission, chain);
+
+    }
+
+    public boolean isPmdPassed(String pmdReport) {
+        return !pmdReport.contains("<violation");
     }
 
     @SneakyThrows
-    public boolean isPmdPassed(String pathToDir) {
-        String[] content = {""};
+    public Optional<String> getPmdReport(String pathToDir) {
+        Path path = new File(pathToDir).toPath();
+
+        if (!Files.exists(path)) { //empty if report doesnt exists
+            return Optional.empty();
+        }
+
+        List<String> report = new ArrayList<>();
         Files.walkFileTree(Path.of(pathToDir), new SimpleFileVisitor<>() {
+            @NonNull
             @Override
             public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
                 if (file.getFileName().toString().equals("pmd.xml")) {
-                    content[0] = Files.readString(file);
+                    report.add(Files.readString(file));
                     return FileVisitResult.TERMINATE;
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
-        return !content[0].contains("<violation");
+        return report.isEmpty() ? Optional.empty() : Optional.of(report.getFirst());
     }
-
 }

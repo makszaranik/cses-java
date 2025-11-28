@@ -4,11 +4,16 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.transport.DockerHttpClient;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import com.github.dockerjava.okhttp.OkDockerHttpClient;
 
+import java.time.Duration;
+
 @Configuration
+@EnableConfigurationProperties(DockerConfig.DockerClientProperties.class)
 public class DockerConfig {
 
     @Bean
@@ -29,5 +34,36 @@ public class DockerConfig {
     @Bean
     public DockerClient dockerClient(DefaultDockerClientConfig config, DockerHttpClient httpClient) {
         return DockerClientImpl.getInstance(config, httpClient);
+    }
+
+    @ConfigurationProperties(prefix = "spring.docker-client")
+    public record DockerClientProperties(
+            Container container,
+            Stages stages
+    ) {
+
+        public record Container(
+                String imageName,
+                String hostName,
+                String downloadUriTemplate,
+                Duration timeout
+        ) {}
+
+        public record Stages(
+            Stage build,
+            Stage test,
+            Stage linter
+        ){}
+
+        public record Stage(
+            String containerName,
+            String script,
+            Path path
+        ){}
+
+        public record Path(
+                String host,
+                String container
+        ){}
     }
 }

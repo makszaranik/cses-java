@@ -17,7 +17,7 @@ public class TaskService {
         return taskRepository.save(task).getId();
     }
 
-    public List<TaskEntity> findAll(){
+    public List<TaskEntity> findAllTasks(){
         return taskRepository.findAll();
     }
 
@@ -26,6 +26,11 @@ public class TaskService {
                 new IllegalStateException(String.format("Task with id %s not found", id))
         );
     }
+
+    public List<TaskEntity> findAllByOwnerId(String ownerId) {
+        return taskRepository.findAllByOwnerId(ownerId);
+    }
+
 
     public void removeTaskEntity(String id){
         TaskEntity taskToDelete = findTaskById(id);

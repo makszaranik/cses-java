@@ -42,7 +42,7 @@ public class FileController {
 
     @GetMapping("download/{fileId}")
     public ResponseEntity<Resource> downloadFile(@PathVariable("fileId") String fileId) {
-        GridFsResource resourceFile = fileUtilService.getFileById(fileId);
+        GridFsResource resourceFile = fileUtilService.findFileById(fileId);
         String contentType = resourceFile.getContentType();
 
         HttpHeaders headers = new HttpHeaders();

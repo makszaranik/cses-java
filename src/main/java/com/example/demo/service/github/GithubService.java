@@ -1,6 +1,6 @@
 package com.example.demo.service.github;
 
-import com.example.demo.dto.repo.RepoResponseDto;
+import com.example.demo.dto.repository.GithubRepositoryResponseDto;
 import com.example.demo.exceptions.ResourceNotFoundException;
 import com.example.demo.model.file.FileEntity;
 import com.example.demo.model.user.UserEntity;
@@ -52,7 +52,7 @@ public class GithubService {
                 .retrieve()
                 .toEntity(byte[].class);
 
-        if(response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
+        if (response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
             throw new ResourceNotFoundException("Resource not found");
         }
 
@@ -66,8 +66,8 @@ public class GithubService {
     }
 
 
-    public List<RepoResponseDto> getAllUserReposNames(String userId) {
-        String reposUri = "https://api.github.com/users/%s/repos";
+    public List<GithubRepositoryResponseDto> getAllUserReposNames(String userId) {
+        String reposUri = "https://api.github.com/user/repos";
 
         OAuth2AuthenticationToken authToken = (OAuth2AuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient(
@@ -77,19 +77,17 @@ public class GithubService {
 
         UserEntity user = userService.findUserById(userId);
         String accessToken = client.getAccessToken().getTokenValue();
-        String reposUriFormatted = String.format(reposUri, user.getUsername());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
-
-        ResponseEntity<RepoResponseDto[]> response = restClient.get()
-                .uri(reposUriFormatted)
+        ResponseEntity<GithubRepositoryResponseDto[]> response = restClient.get()
+                .uri(reposUri)
                 .headers(header -> header.addAll(headers))
                 .retrieve()
-                .toEntity(RepoResponseDto[].class);
+                .toEntity(GithubRepositoryResponseDto[].class);
 
-        if(response.getBody() == null){
-            throw new ResourceNotFoundException("No repositories found");
+        if (response.getBody() == null) {
+            throw new ResourceNotFoundException("No repositories for user with id" + userId + "found");
         }
 
         return List.of(response.getBody());

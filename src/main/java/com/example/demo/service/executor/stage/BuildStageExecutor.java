@@ -1,13 +1,17 @@
 package com.example.demo.service.executor.stage;
 
+import com.example.demo.config.DockerConfig;
 import com.example.demo.model.submission.SubmissionEntity;
 import com.example.demo.model.task.TaskEntity;
 import com.example.demo.service.docker.DockerClientFacade;
+import com.example.demo.service.docker.ContainerStatusCode;
 import com.example.demo.service.submission.SubmissionService;
 import com.example.demo.service.task.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
+import static com.example.demo.model.submission.SubmissionEntity.*;
 
 @Slf4j
 @Component("build")
@@ -17,43 +21,43 @@ public class BuildStageExecutor implements StageExecutor {
     private final DockerClientFacade dockerClientFacade;
     private final SubmissionService submissionService;
     private final TaskService taskService;
+    private final DockerConfig.DockerClientProperties properties;
 
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
+        log.debug("Build stage for submission {}.", submission.getId());
 
-        log.info("Build stage for submission {}.", submission.getId());
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         Long memoryRestriction = task.getMemoryRestriction();
+        String downloadPath = properties.container().downloadUriTemplate();
 
-        String downloadPath = "http://host.docker.internal:8080/files/download/%s";
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
-
-        String cmd = String.format("""
-                wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
-                SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
-                cd $SOLUTION_DIR_NAME && mvn clean compile -q
-                """, solutionUri
-        );
+        String cmd = String.format(properties.stages().build().script(), solutionUri);
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJob(
-                "build_container",
+                properties.stages().build().containerName(),
                 memoryRestriction,
                 "/bin/bash", "-c", cmd
         );
 
         Integer statusCode = jobResult.statusCode();
-        String logs = jobResult.logs();
-        submission.setLogs(logs);
+        submission.getLogs().put(SubmissionEntity.LogType.BUILD, jobResult.logs());
 
         log.debug("Status code is {}", statusCode);
+        ContainerStatusCode containerStatus = ContainerStatusCode.resolve(statusCode);
 
-        if (statusCode == 0) {
-            submission.setStatus(SubmissionEntity.Status.COMPILATION_SUCCESS);
-            submissionService.save(submission);
+        SubmissionEntity.Status submissionStatus = switch (containerStatus) {
+            case CONTAINER_SUCCESS -> SubmissionEntity.Status.COMPILATION_SUCCESS;
+            case CONTAINER_TIME_LIMIT -> SubmissionEntity.Status.TIME_LIMIT_EXCEEDED;
+            case CONTAINER_OUT_OF_MEMORY -> SubmissionEntity.Status.OUT_OF_MEMORY_ERROR;
+            case CONTAINER_FAILED -> SubmissionEntity.Status.TIME_LIMIT_EXCEEDED;
+        };
+
+        submission.setStatus(submissionStatus);
+        submissionService.save(submission);
+
+        if (submissionStatus == Status.COMPILATION_SUCCESS) {
             chain.doNext(submission, chain);
-        } else {
-            submission.setStatus(SubmissionEntity.Status.COMPILATION_ERROR);
-            submissionService.save(submission);
         }
     }
 }
