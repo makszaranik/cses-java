@@ -107,16 +107,17 @@ public class TestStageExecutor implements StageExecutor {
 
     private TestsResult getTestResultParams(String line) {
         String[] parts = line.split(", ");
-        int totalTests = Integer.parseInt(parts[0].split(":")[1].trim());
-        int failures = Integer.parseInt(parts[1].split(":")[1].trim());
-        int errors = Integer.parseInt(parts[2].split(":")[1].trim());
-        int skipped = Integer.parseInt(parts[3].split(":")[1].trim());
-        int timeout = 0; //optional field
-        if (line.contains("timeout")) {
-            timeout = Integer.parseInt(parts[4].split(":")[1].trim());
-        }
+        int totalTests = getValueFromPart(parts[0]);
+        int failures = getValueFromPart(parts[1]);
+        int errors = getValueFromPart(parts[2]);
+        int skipped = getValueFromPart(parts[3]);
+        int timeout = line.contains("timeout") ? getValueFromPart(parts[4]) : 0;
         int passedTests = totalTests - failures - errors - skipped - timeout;
         return new TestsResult(totalTests, failures, errors, skipped, timeout, passedTests);
+    }
+
+    private int getValueFromPart(String part) {
+        return Integer.parseInt(part.split(":")[1].trim());
     }
 
     private Integer calculateScore(int passed, int total, int points) {
