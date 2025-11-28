@@ -47,6 +47,7 @@ public class SubmissionEntity {
         OUT_OF_MEMORY_ERROR,
         LINTER_PASSED,
         LINTER_FAILED,
+        JUDGEMENT_FAILED
     }
 
     public enum LogType {

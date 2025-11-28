@@ -11,17 +11,15 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
 import org.springframework.stereotype.Component;
-
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Component("linter")
@@ -60,13 +58,19 @@ public class LinterStageExecutor implements StageExecutor {
         );
 
         Integer statusCode = jobResult.statusCode();
-        String pmdReportContent = getPmdReport(hostReportsDir)
-                .orElseThrow(() -> new IllegalStateException("No PMD report found for submission " + submission.getId()));
+        Optional<String> pmdReport = getPmdReport(hostReportsDir);
 
-        int pmdScore = isPmdPassed(pmdReportContent) ? task.getLintersPoints() : 0;
+        if(pmdReport.isEmpty()) {
+            log.error("pmd report for submission {} not found.", submission.getId());
+            submission.setStatus(SubmissionEntity.Status.JUDGEMENT_FAILED);
+            submission.getLogs().put(SubmissionEntity.LogType.LINTER, "Linter report generation failed.");
+            submissionService.save(submission);
+            return;
+        }
 
+        int pmdScore = isPmdPassed(pmdReport.get()) ? task.getLintersPoints() : 0;
         submission.setScore(submission.getScore() + pmdScore);
-        submission.getLogs().put(SubmissionEntity.LogType.LINTER, pmdReportContent);
+        submission.getLogs().put(SubmissionEntity.LogType.LINTER, pmdReport.get());
 
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", pmdScore);

@@ -13,7 +13,9 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import javax.swing.text.html.Option;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -63,15 +65,17 @@ public class TestStageExecutor implements StageExecutor {
         );
 
         Integer statusCode = jobResult.statusCode();
-        ContainerStatusCode containerStatus = ContainerStatusCode.resolve(statusCode);
         Optional<TestsResult> testsResult = getTestResult(hostReportsDir);
 
-        int score = 0;
-        if (testsResult.isPresent()) {
-            int passedTests = testsResult.get().passed();
-            int totalTests = testsResult.get().total();
-            score = calculateScore(passedTests, totalTests, task.getTestsPoints());
+        if (testsResult.isEmpty()) {
+            log.error("test report for submission {} not found.", submission.getId());
+            submission.setStatus(SubmissionEntity.Status.JUDGEMENT_FAILED);
+            submission.getLogs().put(SubmissionEntity.LogType.TEST, "Test report generation failed.");
+            submissionService.save(submission);
+            return;
         }
+
+        int score = calculateScore(testsResult.get().passed(), testsResult.get().total(), task.getTestsPoints());
 
         submission.getLogs().put(SubmissionEntity.LogType.TEST, jobResult.logs());
         submission.setScore(submission.getScore() + score);
@@ -79,6 +83,7 @@ public class TestStageExecutor implements StageExecutor {
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", score);
 
+        ContainerStatusCode containerStatus = ContainerStatusCode.resolve(statusCode);
         SubmissionEntity.Status submissionStatus = switch (containerStatus) {
             case CONTAINER_SUCCESS -> SubmissionEntity.Status.ACCEPTED;
             case CONTAINER_TIME_LIMIT -> SubmissionEntity.Status.TIME_LIMIT_EXCEEDED;
@@ -95,8 +100,8 @@ public class TestStageExecutor implements StageExecutor {
     }
 
     @SneakyThrows
-    private Optional<TestsResult> getTestResult(String pathToFile) {
-        Path path = new File(pathToFile).toPath();
+    private Optional<TestsResult> getTestResult(String pathToDir) {
+        Path path = new File(pathToDir).toPath();
 
         if (!Files.exists(path)) {   //empty if report doesnt exists
             return Optional.empty();
@@ -136,7 +141,7 @@ public class TestStageExecutor implements StageExecutor {
     }
 
     private Integer calculateScore(int passed, int total, int points) {
-        return passed == 0 ? 0 : (passed / total) * points;
+        return passed == 0 ? 0 : (passed * points) / total;
     }
 
     private record TestsResult(
