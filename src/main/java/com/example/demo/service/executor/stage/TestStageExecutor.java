@@ -20,7 +20,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
@@ -36,6 +39,7 @@ public class TestStageExecutor implements StageExecutor {
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
         log.debug("Test stage for submission {}.", submission.getId());
+
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         String testsFileId = task.getTestsFileId();
         Long memoryRestriction = task.getMemoryRestriction();
@@ -44,13 +48,14 @@ public class TestStageExecutor implements StageExecutor {
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
         String testUri = String.format(downloadPath, testsFileId);
 
-        String hostReportsDir = "/tmp/test-results/" + submission.getId();
-        String containerReportsDir = "/app/solution_dir";
+        DockerConfig.DockerClientProperties.Path path = properties.stages().test().path();
+        String hostReportsDir = path.host() + submission.getId();
+        String containerReportsDir = path.container();
 
-        String cmd = String.format(properties.scripts().test(), solutionUri, testUri);
+        String cmd = String.format(properties.stages().test().script(), solutionUri, testUri);
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
-                properties.containers().test(),
+                properties.stages().test().containerName(),
                 hostReportsDir,
                 containerReportsDir,
                 memoryRestriction,
@@ -58,8 +63,15 @@ public class TestStageExecutor implements StageExecutor {
         );
 
         Integer statusCode = jobResult.statusCode();
-        TestsResult testsResult = getTestResult(hostReportsDir);
-        Integer score = calculateScore(testsResult.passed(), testsResult.total(), task.getTestsPoints());
+        ContainerStatusCode containerStatus = ContainerStatusCode.resolve(statusCode);
+        Optional<TestsResult> testsResult = getTestResult(hostReportsDir);
+
+        int score = 0;
+        if (testsResult.isPresent()) {
+            int passedTests = testsResult.get().passed();
+            int totalTests = testsResult.get().total();
+            score = calculateScore(passedTests, totalTests, task.getTestsPoints());
+        }
 
         submission.getLogs().put(SubmissionEntity.LogType.TEST, jobResult.logs());
         submission.setScore(submission.getScore() + score);
@@ -67,7 +79,6 @@ public class TestStageExecutor implements StageExecutor {
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", score);
 
-        ContainerStatusCode containerStatus = ContainerStatusCode.resolve(statusCode);
         SubmissionEntity.Status submissionStatus = switch (containerStatus) {
             case CONTAINER_SUCCESS -> SubmissionEntity.Status.ACCEPTED;
             case CONTAINER_TIME_LIMIT -> SubmissionEntity.Status.TIME_LIMIT_EXCEEDED;
@@ -78,15 +89,20 @@ public class TestStageExecutor implements StageExecutor {
         submission.setStatus(submissionStatus);
         submissionService.save(submission);
 
-        if(submissionStatus == SubmissionEntity.Status.ACCEPTED) {
+        if (submissionStatus == SubmissionEntity.Status.ACCEPTED) {
             chain.doNext(submission, chain);
         }
     }
 
     @SneakyThrows
-    private TestsResult getTestResult(String pathToFile) {
+    private Optional<TestsResult> getTestResult(String pathToFile) {
         Path path = new File(pathToFile).toPath();
-        AtomicReference<TestsResult> result = new AtomicReference<>();
+
+        if (!Files.exists(path)) {   //empty if report doesnt exists
+            return Optional.empty();
+        }
+
+        List<String> report = new ArrayList<>();
         Files.walkFileTree(path, new SimpleFileVisitor<>() {
             @NonNull
             @Override
@@ -96,13 +112,12 @@ public class TestStageExecutor implements StageExecutor {
                     String content = Files.readString(file);
                     Arrays.stream(content.split("\n"))
                             .filter(line -> line.contains("Tests run:"))
-                            .findFirst()
-                            .ifPresent(line -> result.set(getTestResultParams(line)));
+                            .findFirst().ifPresent(report::add);
                 }
-                return FileVisitResult.CONTINUE;
+                return report.isEmpty() ? FileVisitResult.CONTINUE : FileVisitResult.TERMINATE;
             }
         });
-        return result.get();
+        return report.isEmpty() ? Optional.empty() : Optional.of(getTestResultParams(report.getFirst()));
     }
 
     private TestsResult getTestResultParams(String line) {

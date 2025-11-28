@@ -11,14 +11,16 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
@@ -34,6 +36,7 @@ public class LinterStageExecutor implements StageExecutor {
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
         log.debug("Linter stage for submission {}.", submission.getId());
+
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         String lintersFileId = task.getLintersFileId();
         Long memoryRestriction = task.getMemoryRestriction();
@@ -42,13 +45,14 @@ public class LinterStageExecutor implements StageExecutor {
         String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
         String linterUri = String.format(downloadPath, lintersFileId);
 
-        String hostReportsDir = "/tmp/linter-results/" + submission.getId();
-        String containerReportsDir = "/app/solution_dir";
+        DockerConfig.DockerClientProperties.Path path = properties.stages().linter().path();
+        String hostReportsDir = path.host() + submission.getId();
+        String containerReportsDir = path.container();
 
-        String cmd = String.format(properties.scripts().linter(), solutionUri, linterUri);
+        String cmd = String.format(properties.stages().linter().script(), solutionUri, linterUri);
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJobWithVolume(
-                properties.containers().linter(),
+                properties.stages().linter().containerName(),
                 hostReportsDir,
                 containerReportsDir,
                 memoryRestriction,
@@ -56,10 +60,13 @@ public class LinterStageExecutor implements StageExecutor {
         );
 
         Integer statusCode = jobResult.statusCode();
-        String pmdReport = getPmdReport(hostReportsDir);
-        Integer pmdScore = isPmdPassed(pmdReport) ? task.getLintersPoints() : 0;
+        String pmdReportContent = getPmdReport(hostReportsDir)
+                .orElseThrow(() -> new IllegalStateException("No PMD report found for submission " + submission.getId()));
+
+        int pmdScore = isPmdPassed(pmdReportContent) ? task.getLintersPoints() : 0;
+
         submission.setScore(submission.getScore() + pmdScore);
-        submission.getLogs().put(SubmissionEntity.LogType.LINTER, pmdReport);
+        submission.getLogs().put(SubmissionEntity.LogType.LINTER, pmdReportContent);
 
         log.debug("Status code is {}", statusCode);
         log.debug("Score is {}", pmdScore);
@@ -69,7 +76,7 @@ public class LinterStageExecutor implements StageExecutor {
             case CONTAINER_SUCCESS -> SubmissionEntity.Status.LINTER_PASSED;
             case CONTAINER_OUT_OF_MEMORY -> SubmissionEntity.Status.OUT_OF_MEMORY_ERROR;
             case CONTAINER_TIME_LIMIT -> SubmissionEntity.Status.TIME_LIMIT_EXCEEDED;
-            case CONTAINER_FAILED ->  SubmissionEntity.Status.LINTER_FAILED;
+            case CONTAINER_FAILED -> SubmissionEntity.Status.LINTER_FAILED;
         };
 
         submission.setStatus(submissionStatus);
@@ -79,26 +86,30 @@ public class LinterStageExecutor implements StageExecutor {
 
     }
 
-    @SneakyThrows
     public boolean isPmdPassed(String pmdReport) {
         return !pmdReport.contains("<violation");
     }
 
     @SneakyThrows
-    public String getPmdReport(String pathToDir) {
-        AtomicReference<String> result = new AtomicReference<>();
+    public Optional<String> getPmdReport(String pathToDir) {
+        Path path = new File(pathToDir).toPath();
+
+        if (!Files.exists(path)) { //empty if report doesnt exists
+            return Optional.empty();
+        }
+
+        List<String> report = new ArrayList<>();
         Files.walkFileTree(Path.of(pathToDir), new SimpleFileVisitor<>() {
             @NonNull
             @Override
             public FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
                 if (file.getFileName().toString().equals("pmd.xml")) {
-                    result.set(Files.readString(file));
-                    log.info(result.toString());
+                    report.add(Files.readString(file));
                     return FileVisitResult.TERMINATE;
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
-        return result.get();
+        return report.isEmpty() ? Optional.empty() : Optional.of(report.getFirst());
     }
 }

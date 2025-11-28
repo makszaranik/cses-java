@@ -25,18 +25,17 @@ public class BuildStageExecutor implements StageExecutor {
 
     @Override
     public void execute(SubmissionEntity submission, StageExecutorChain chain) {
-
         log.debug("Build stage for submission {}.", submission.getId());
+
         TaskEntity task = taskService.findTaskById(submission.getTaskId());
         Long memoryRestriction = task.getMemoryRestriction();
-
         String downloadPath = properties.container().downloadUriTemplate();
-        String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
 
-        String cmd = String.format(properties.scripts().build(), solutionUri);
+        String solutionUri = String.format(downloadPath, submission.getSourceCodeFileId());
+        String cmd = String.format(properties.stages().build().script(), solutionUri);
 
         DockerClientFacade.DockerJobResult jobResult = dockerClientFacade.runJob(
-                properties.containers().build(),
+                properties.stages().build().containerName(),
                 memoryRestriction,
                 "/bin/bash", "-c", cmd
         );

@@ -1,7 +1,6 @@
 package com.example.demo.service.executor.stage;
 
 import com.example.demo.model.submission.SubmissionEntity;
-import com.example.demo.repository.SubmissionRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +18,7 @@ public class StageExecutorChain {
     private final LinterStageExecutor linterStageExecutor;
 
     private List<StageExecutor> stages;
-    private int currentStageIndex = 0;
+    private final ThreadLocal<Integer> currentStageIndex = ThreadLocal.withInitial(() -> 0);
 
     @PostConstruct
     private void initExecutorChain() {
@@ -31,17 +30,18 @@ public class StageExecutorChain {
     }
 
     public void doNext(SubmissionEntity submission, StageExecutorChain chain) {
-        if (currentStageIndex < stages.size()) {
-            StageExecutor currentStage = stages.get(currentStageIndex++);
+        if (currentStageIndex.get() < stages.size()) {
+            StageExecutor currentStage = stages.get(currentStageIndex.get());
+            currentStageIndex.set(currentStageIndex.get() + 1); //next stage in chain
             currentStage.execute(submission, chain);
         } else {
-            log.info("All stages completed.");
-            currentStageIndex = 0;
+            log.debug("All stages completed.");
+            currentStageIndex.set(0);
         }
     }
 
     public void startChain(SubmissionEntity submission) {
-        this.currentStageIndex = 0;
+        this.currentStageIndex.set(0);
         this.doNext(submission, this);
     }
 
