@@ -39,8 +39,7 @@ public class DockerConfig {
     @ConfigurationProperties(prefix = "spring.docker-client")
     public record DockerClientProperties(
             Container container,
-            Containers containers,
-            Scripts scripts
+            Stages stages
     ) {
 
         public record Container(
@@ -50,16 +49,21 @@ public class DockerConfig {
                 Duration timeout
         ) {}
 
-        public record Containers(
-                String build,
-                String test,
-                String linter
-        ) {}
+        public record Stages(
+            Stage build,
+            Stage test,
+            Stage linter
+        ){}
 
-        public record Scripts(
-                String build,
-                String test,
-                String linter
-        ) {}
+        public record Stage(
+            String containerName,
+            String script,
+            Path path
+        ){}
+
+        public record Path(
+                String host,
+                String container
+        ){}
     }
 }

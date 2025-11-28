@@ -56,7 +56,7 @@ public class TaskController {
     @PreAuthorize("isAuthenticated()")
     public SseEmitter taskStatus(@RequestParam String submissionId) {
         String userId = userService.getCurrentUser().getId();
-        SseEmitter emitter = new SseEmitter(TimeUnit.SECONDS.toMillis(60));
+        SseEmitter emitter = new SseEmitter(TimeUnit.SECONDS.toMillis(80));
         eventService.createSubmissionStatusEvent(emitter, userId, submissionId);
         return emitter;
     }

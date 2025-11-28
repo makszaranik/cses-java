@@ -29,12 +29,12 @@ public class EventService {
     @PostConstruct
     public void startListening() {
         MessageListener<ChangeStreamDocument<Document>, SubmissionEntity> submissionEntityMessageListener = m -> {
-            log.info("Received change stream document {}", m);
+            log.debug("Received change stream document {}", m);
             ChangeStreamDocument<Document> raw = m.getRaw();
             if (raw != null && raw.getDocumentKey() != null) {
                 OperationType operationType = raw.getOperationType();
                 String documentKey = raw.getDocumentKey().getFirstKey();
-                log.info("Message with type {} for: submission {} with id {}", operationType, raw, documentKey);
+                log.debug("Message with type {} for: submission {} with id {}", operationType, raw, documentKey);
 
                 switch (operationType) {
                     case UPDATE, REPLACE -> {
@@ -61,11 +61,10 @@ public class EventService {
             String userId,
             String submissionId,
             SseEmitter emitter
-    ) {
-    }
+    ) {}
 
     public void createSubmissionStatusEvent(SseEmitter emitter, String userId, String submissionId) {
-        log.info("Creating submission status event for submission id {}", submissionId);
+        log.debug("Creating submission status event for submission id {}", submissionId);
         SubmissionStatusEvent statusEvent = new SubmissionStatusEvent(userId, submissionId, emitter);
         emitters.add(statusEvent);
         emitter.onCompletion(() -> emitters.remove(statusEvent));
@@ -79,7 +78,7 @@ public class EventService {
             String submissionId = event.submissionId;
             if(submissionId.equals(submissionEntity.getId())) {
                 try {
-                    log.info("Sending submission status event for submission id {}", submissionId);
+                    log.debug("Sending submission status event for submission id {}", submissionId);
                     emitter.send(submissionEntity);
                 } catch (IOException e) {
                     throw new RuntimeException(e);

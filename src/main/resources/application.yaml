@@ -8,27 +8,36 @@ spring:
       host-name: demo_default
       download-uri-template: http://host.docker.internal:8080/files/download/%s
       timeout: 60s
-    containers:
-      build: build_container
-      test: test_container
-      linter: linter_container
-    scripts:
-      build: |
-        wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
-        SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
-        cd $SOLUTION_DIR_NAME && mvn clean compile -q
-      test: |
-        wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
-        wget -O test.zip %s && unzip test.zip -d test_dir &&
-        SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
-        mv test_dir/test/java/* $SOLUTION_DIR_NAME/src/test/java &&
-        cd $SOLUTION_DIR_NAME && mvn clean test -q
-      linter: |
-        wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
-        wget -O linter.zip %s && unzip linter.zip -d linter_dir &&
-        SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
-        mv linter_dir/* $SOLUTION_DIR_NAME/src/main/resources &&
-        cd $SOLUTION_DIR_NAME && mvn pmd:check -q
+    stages:
+      build:
+        container-name: build_container
+        script: |
+          wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
+          SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
+          cd $SOLUTION_DIR_NAME && mvn clean compile -q
+      test:
+        container-name: test_container
+        script: |
+          wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
+          wget -O test.zip %s && unzip test.zip -d test_dir &&
+          SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
+          mv test_dir/test/java/* $SOLUTION_DIR_NAME/src/test/java &&
+          cd $SOLUTION_DIR_NAME && mvn clean test -q
+        path:
+          host: /tmp/test-results/
+          container: /app/solution_dir
+      linter:
+        container-name: linter_container
+        script: |
+          wget -O solution.zip %s && unzip solution.zip -d solution_dir &&
+          wget -O linter.zip %s && unzip linter.zip -d linter_dir &&
+          SOLUTION_DIR_NAME=$(find solution_dir -mindepth 1 -maxdepth 1 -type d | head -n 1) &&
+          mv linter_dir/* $SOLUTION_DIR_NAME/src/main/resources &&
+          cd $SOLUTION_DIR_NAME && mvn pmd:check -q
+        path:
+          host: /tmp/linter-results/
+          container: /app/solution_dir
+
   security:
     oauth2:
       client:
@@ -42,3 +51,6 @@ spring:
             authorization-uri: https://github.com/login/oauth/authorize
             token-uri: https://github.com/login/oauth/access_token
             user-info-uri: https://api.github.com/user
+logging:
+  level:
+    com.example.demo.service.executor.stage: DEBUG
